@@ -72,6 +72,9 @@ enum Commands {
     Hooks {
         /// Component name or selector
         component: String,
+        /// Max serialization depth for hook values (default: 3)
+        #[arg(long)]
+        depth: Option<u32>,
     },
     /// Manage console logs/errors inbox
     Console {
@@ -122,7 +125,7 @@ fn build_command(command: &Commands) -> serde_json::Value {
             props_depth,
             ..
         } => commands::components(*depth, *include_host, !no_props, !no_state, *props_depth),
-        Commands::Hooks { component } => commands::hooks(component),
+        Commands::Hooks { component, depth } => commands::hooks(component, *depth),
         Commands::Console { action } => match action {
             ConsoleAction::Logs => commands::console_logs(),
             ConsoleAction::Errors => commands::console_errors(),
@@ -312,6 +315,179 @@ fn print_component_tree(resp: &Response, filter: Option<&str>) {
     }
 }
 
+/// Print hook inspection results in human-readable format.
+fn print_hooks(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        // Check for error field
+        if let Some(err) = data.get("error").and_then(|v| v.as_str()) {
+            eprintln!("Error: {}", err);
+            return;
+        }
+
+        let component = data
+            .get("component")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Unknown");
+        let comp_type = data
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+        let hook_count = data
+            .get("hookCount")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+
+        // Handle class components with classState
+        if let Some(class_state) = data.get("classState") {
+            println!(
+                "Hooks for {} ({}, class component):",
+                component, comp_type
+            );
+            println!("  classState: {}", compact_json(class_state));
+            return;
+        }
+
+        println!(
+            "Hooks for {} ({}, {} hooks):",
+            component, comp_type, hook_count
+        );
+
+        if let Some(hooks) = data.get("hooks").and_then(|v| v.as_array()) {
+            for hook in hooks {
+                let index = hook.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+                let hook_type = hook
+                    .get("type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+
+                let debug_label = hook.get("debugLabel").and_then(|v| v.as_str());
+
+                let line = match hook_type {
+                    "state" => {
+                        let val = hook
+                            .get("value")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useState: {}", index, val)
+                    }
+                    "reducer" => {
+                        let val = hook
+                            .get("value")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useReducer: {}", index, val)
+                    }
+                    "effect" | "layout-effect" | "insertion-effect" => {
+                        let name = match hook_type {
+                            "layout-effect" => "useLayoutEffect",
+                            "insertion-effect" => "useInsertionEffect",
+                            _ => "useEffect",
+                        };
+                        let deps = hook
+                            .get("deps")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        let cleanup = hook
+                            .get("hasCleanup")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        format!(
+                            "  [{}] {}: deps={} cleanup={}",
+                            index,
+                            name,
+                            deps,
+                            if cleanup { "yes" } else { "no" }
+                        )
+                    }
+                    "ref" => {
+                        let current = hook
+                            .get("current")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useRef: current={}", index, current)
+                    }
+                    "memo" => {
+                        let val = hook
+                            .get("value")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        let deps = hook
+                            .get("deps")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useMemo: {} deps={}", index, val, deps)
+                    }
+                    "callback" => {
+                        let deps = hook
+                            .get("deps")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useCallback: deps={}", index, deps)
+                    }
+                    "context" => {
+                        let val = hook
+                            .get("value")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useContext: {}", index, val)
+                    }
+                    "transition" => {
+                        let val = hook
+                            .get("value")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useTransition: {}", index, val)
+                    }
+                    "deferred-value" => {
+                        let val = hook
+                            .get("value")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useDeferredValue: {}", index, val)
+                    }
+                    "id" => {
+                        let val = hook
+                            .get("value")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useId: {}", index, val)
+                    }
+                    "sync-external-store" => {
+                        let val = hook
+                            .get("value")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useSyncExternalStore: {}", index, val)
+                    }
+                    "debug-value" => {
+                        // debug-value hooks are label-only, typically consumed by preceding hook
+                        let val = hook
+                            .get("value")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        format!("  [{}] useDebugValue: {}", index, val)
+                    }
+                    other => {
+                        // Custom hooks or unknown types
+                        let val = hook
+                            .get("value")
+                            .map(|v| compact_json(v))
+                            .unwrap_or_else(|| "null".to_string());
+                        if let Some(label) = debug_label {
+                            format!("  [{}] {} (custom): {}", index, label, val)
+                        } else {
+                            format!("  [{}] {}: {}", index, other, val)
+                        }
+                    }
+                };
+                println!("{}", line);
+            }
+        }
+    } else {
+        println!("No data returned.");
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -402,6 +578,11 @@ fn main() -> Result<()> {
                     if resp.success && cli.format == OutputFormat::Text =>
                 {
                     print_component_tree(&resp, component.as_deref());
+                }
+                Commands::Hooks { .. }
+                    if resp.success && cli.format == OutputFormat::Text =>
+                {
+                    print_hooks(&resp);
                 }
                 _ => {
                     print_response(&resp, &cli.format);

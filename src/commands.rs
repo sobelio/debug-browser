@@ -115,13 +115,17 @@ pub fn components(
     cmd
 }
 
-/// Inspect hooks for a named React component (stub).
-pub fn hooks(component: &str) -> Value {
-    json!({
+/// Inspect hooks for a named React component.
+pub fn hooks(component: &str, depth: Option<u32>) -> Value {
+    let mut cmd = json!({
         "id": gen_id(),
         "action": "hooks",
         "component": component,
-    })
+    });
+    if let Some(d) = depth {
+        cmd["depth"] = json!(d);
+    }
+    cmd
 }
 
 /// Detect whether React is present on the current page.
