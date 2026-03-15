@@ -4,4 +4,5 @@ pub mod browser;
 pub mod commands;
 pub mod error;
 pub mod inbox;
+pub mod output;
 pub mod react;

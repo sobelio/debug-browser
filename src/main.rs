@@ -1,13 +1,7 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
+use debug_browser::output::{CommandOutput, Message, OutputFormat};
 use tracing_subscriber::EnvFilter;
-
-/// Output format for command results.
-#[derive(Debug, Clone, ValueEnum)]
-pub enum OutputFormat {
-    Text,
-    Json,
-}
 
 #[derive(Parser)]
 #[command(name = "debug-browser", about = "React debugging browser", version)]
@@ -72,6 +66,39 @@ enum ConsoleAction {
     Clear,
 }
 
+fn run_command(cli: &Cli) -> Result<(), debug_browser::error::DebugBrowserError> {
+    let msg = match &cli.command {
+        Commands::Navigate { url } => {
+            format!("Not yet implemented: navigate (url: {url})")
+        }
+        Commands::Click { selector } => {
+            format!("Not yet implemented: click (selector: {selector})")
+        }
+        Commands::Type { selector, text } => {
+            format!("Not yet implemented: type (selector: {selector}, text: {text})")
+        }
+        Commands::Components => "Not yet implemented: components".to_string(),
+        Commands::Hooks { component } => {
+            format!("Not yet implemented: hooks (component: {component})")
+        }
+        Commands::Console { action } => match action {
+            ConsoleAction::Logs => "Not yet implemented: console logs".to_string(),
+            ConsoleAction::Errors => "Not yet implemented: console errors".to_string(),
+            ConsoleAction::Clear => "Not yet implemented: console clear".to_string(),
+        },
+        Commands::Eval { expression } => {
+            format!("Not yet implemented: eval (expression: {expression})")
+        }
+    };
+
+    let output = CommandOutput::success(Message::new(msg));
+    let rendered = output.render(&cli.format).map_err(|e| {
+        debug_browser::error::DebugBrowserError::Serialization(e)
+    })?;
+    println!("{rendered}");
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -83,36 +110,19 @@ async fn main() -> Result<()> {
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
     };
 
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .init();
+    tracing_subscriber::fmt().with_env_filter(filter).init();
 
-    match &cli.command {
-        Commands::Navigate { url } => {
-            println!("Not yet implemented: navigate (url: {url})");
-        }
-        Commands::Click { selector } => {
-            println!("Not yet implemented: click (selector: {selector})");
-        }
-        Commands::Type { selector, text } => {
-            println!("Not yet implemented: type (selector: {selector}, text: {text})");
-        }
-        Commands::Components => {
-            println!("Not yet implemented: components");
-        }
-        Commands::Hooks { component } => {
-            println!("Not yet implemented: hooks (component: {component})");
-        }
-        Commands::Console { action } => {
-            match action {
-                ConsoleAction::Logs => println!("Not yet implemented: console logs"),
-                ConsoleAction::Errors => println!("Not yet implemented: console errors"),
-                ConsoleAction::Clear => println!("Not yet implemented: console clear"),
-            }
-        }
-        Commands::Eval { expression } => {
-            println!("Not yet implemented: eval (expression: {expression})");
-        }
+    if let Err(err) = run_command(&cli) {
+        let output: CommandOutput<Message> = CommandOutput {
+            success: false,
+            data: None,
+            error: Some(err.to_string()),
+        };
+        let rendered = output
+            .render(&cli.format)
+            .unwrap_or_else(|_| format!("Error: {err}"));
+        eprintln!("{rendered}");
+        std::process::exit(1);
     }
 
     Ok(())
