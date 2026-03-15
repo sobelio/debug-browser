@@ -61,10 +61,11 @@ Plans:
 **Goal**: Create sobelio/debug-browser public repo, clean README with install/usage instructions, push code, tag v1.1 release
 **Depends on**: Phase 9
 **Research**: Unlikely (standard git/gh operations)
-**Plans**: TBD
+**Plans**: 2
 
 Plans:
-- [ ] 10-01: TBD (run /gsd:plan-phase 10 to break down)
+- [ ] 10-01: README, LICENSE, repo prep
+- [ ] 10-02: GitHub repo creation + v1.1 release tag
 
 ## Progress
 
