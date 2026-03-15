@@ -9,3 +9,9 @@ daemon/node_modules/
 
 # Nix build output
 result
+
+# Planning docs (not for public repo)
+.planning/
+
+# Test/scratch directory
+/try-debug-browser/
