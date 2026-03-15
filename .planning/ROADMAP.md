@@ -55,7 +55,7 @@ Plans:
 
 Plans:
 - [x] 09-01: Create flake.nix with crane + buildNpmPackage + makeWrapper (completed 2026-03-15)
-- [ ] 09-02: Dev shell + Nix install documentation
+- [x] 09-02: Dev shell + Nix install documentation (completed 2026-03-15)
 
 #### Phase 10: Repo & Release
 **Goal**: Create sobelio/debug-browser public repo, clean README with install/usage instructions, push code, tag v1.1 release
@@ -78,5 +78,5 @@ Plans:
 | 6. Automated Testing | v1.0 | 3/3 | Complete | 2026-03-15 |
 | 7. Context Saving & AI Token Efficiency | v1.0 | 3/3 | Complete | 2026-03-15 |
 | 8. Skill Packaging | v1.1 | 2/2 | Complete | 2026-03-15 |
-| 9. Nix Flake | v1.1 | 1/2 | In progress | - |
+| 9. Nix Flake | v1.1 | 2/2 | Complete | 2026-03-15 |
 | 10. Repo & Release | v1.1 | 0/? | Not started | - |
