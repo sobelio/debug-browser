@@ -6,3 +6,6 @@
 # Node.js daemon
 daemon/dist/
 daemon/node_modules/
+
+# Nix build output
+result
