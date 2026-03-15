@@ -143,3 +143,63 @@ pub fn close() -> Value {
         "action": "close",
     })
 }
+
+/// Get cookies, optionally filtered by URLs.
+pub fn cookies_get(urls: &[String]) -> Value {
+    let mut cmd = json!({
+        "id": gen_id(),
+        "action": "cookies_get",
+    });
+    if !urls.is_empty() {
+        cmd["urls"] = json!(urls);
+    }
+    cmd
+}
+
+/// Set one or more cookies.
+pub fn cookies_set(
+    name: &str,
+    value: &str,
+    domain: Option<&str>,
+    path: Option<&str>,
+    http_only: bool,
+    secure: bool,
+    same_site: Option<&str>,
+    expires: Option<f64>,
+) -> Value {
+    let mut cookie = json!({
+        "name": name,
+        "value": value,
+    });
+    if let Some(d) = domain {
+        cookie["domain"] = json!(d);
+    }
+    if let Some(p) = path {
+        cookie["path"] = json!(p);
+    }
+    if http_only {
+        cookie["httpOnly"] = json!(true);
+    }
+    if secure {
+        cookie["secure"] = json!(true);
+    }
+    if let Some(s) = same_site {
+        cookie["sameSite"] = json!(s);
+    }
+    if let Some(e) = expires {
+        cookie["expires"] = json!(e);
+    }
+    json!({
+        "id": gen_id(),
+        "action": "cookies_set",
+        "cookies": [cookie],
+    })
+}
+
+/// Clear all cookies.
+pub fn cookies_clear() -> Value {
+    json!({
+        "id": gen_id(),
+        "action": "cookies_clear",
+    })
+}

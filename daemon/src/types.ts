@@ -178,6 +178,30 @@ export interface HooksCommand extends BaseCommand {
   depth?: number;
 }
 
+export interface CookiesGetCommand extends BaseCommand {
+  action: 'cookies_get';
+  urls?: string[];
+}
+
+export interface CookiesSetCommand extends BaseCommand {
+  action: 'cookies_set';
+  cookies: Array<{
+    name: string;
+    value: string;
+    url?: string;
+    domain?: string;
+    path?: string;
+    expires?: number;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: 'Strict' | 'Lax' | 'None';
+  }>;
+}
+
+export interface CookiesClearCommand extends BaseCommand {
+  action: 'cookies_clear';
+}
+
 // Union of all command types
 export type Command =
   | LaunchCommand
@@ -209,7 +233,10 @@ export type Command =
   | PressCommand
   | ReactDetectCommand
   | ComponentsCommand
-  | HooksCommand;
+  | HooksCommand
+  | CookiesGetCommand
+  | CookiesSetCommand
+  | CookiesClearCommand;
 
 // Response types
 export interface SuccessResponse<T = unknown> {

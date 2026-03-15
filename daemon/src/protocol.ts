@@ -186,6 +186,32 @@ const hooksSchema = baseCommandSchema.extend({
   depth: z.number().positive().optional(),
 });
 
+const cookiesGetSchema = baseCommandSchema.extend({
+  action: z.literal('cookies_get'),
+  urls: z.array(z.string()).optional(),
+});
+
+const cookiesSetSchema = baseCommandSchema.extend({
+  action: z.literal('cookies_set'),
+  cookies: z.array(
+    z.object({
+      name: z.string(),
+      value: z.string(),
+      url: z.string().optional(),
+      domain: z.string().optional(),
+      path: z.string().optional(),
+      expires: z.number().optional(),
+      httpOnly: z.boolean().optional(),
+      secure: z.boolean().optional(),
+      sameSite: z.enum(['Strict', 'Lax', 'None']).optional(),
+    })
+  ),
+});
+
+const cookiesClearSchema = baseCommandSchema.extend({
+  action: z.literal('cookies_clear'),
+});
+
 // Union schema for all commands
 const commandSchema = z.discriminatedUnion('action', [
   launchSchema,
@@ -218,6 +244,9 @@ const commandSchema = z.discriminatedUnion('action', [
   reactDetectSchema,
   componentsSchema,
   hooksSchema,
+  cookiesGetSchema,
+  cookiesSetSchema,
+  cookiesClearSchema,
 ]);
 
 // Parse result type

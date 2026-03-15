@@ -27,6 +27,8 @@ import type {
   ReactDetectCommand,
   ComponentsCommand,
   HooksCommand,
+  CookiesGetCommand,
+  CookiesSetCommand,
   NavigateData,
   ScreenshotData,
   EvaluateData,
@@ -112,6 +114,12 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         return await handleComponents(command, browser);
       case 'hooks':
         return await handleHooks(command, browser);
+      case 'cookies_get':
+        return await handleCookiesGet(command, browser);
+      case 'cookies_set':
+        return await handleCookiesSet(command, browser);
+      case 'cookies_clear':
+        return await handleCookiesClear(command, browser);
       default: {
         const unknownCommand = command as { id: string; action: string };
         return errorResponse(unknownCommand.id, `Unknown action: ${unknownCommand.action}`);
@@ -516,4 +524,42 @@ async function handleHooks(
   );
 
   return successResponse(command.id, result);
+}
+
+async function handleCookiesGet(
+  command: CookiesGetCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const context = page.context();
+  const cookies = await context.cookies(command.urls);
+  return successResponse(command.id, { cookies });
+}
+
+async function handleCookiesSet(
+  command: CookiesSetCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const context = page.context();
+  // Auto-fill URL for cookies that don't have domain/path/url set
+  const pageUrl = page.url();
+  const cookies = command.cookies.map((cookie) => {
+    if (!cookie.url && !cookie.domain && !cookie.path) {
+      return { ...cookie, url: pageUrl };
+    }
+    return cookie;
+  });
+  await context.addCookies(cookies);
+  return successResponse(command.id, { set: true });
+}
+
+async function handleCookiesClear(
+  command: Command & { action: 'cookies_clear' },
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const context = page.context();
+  await context.clearCookies();
+  return successResponse(command.id, { cleared: true });
 }

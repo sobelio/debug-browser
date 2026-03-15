@@ -91,6 +91,11 @@ enum Commands {
         #[command(subcommand)]
         action: ReactAction,
     },
+    /// Manage browser cookies
+    Cookies {
+        #[command(subcommand)]
+        action: Option<CookiesAction>,
+    },
     /// Close the browser and shut down the daemon
     Close,
 }
@@ -99,6 +104,42 @@ enum Commands {
 enum ReactAction {
     /// Detect whether React is present on the current page
     Detect,
+}
+
+#[derive(Subcommand)]
+enum CookiesAction {
+    /// Get cookies, optionally filtered by URLs
+    Get {
+        /// URLs to filter cookies by
+        urls: Vec<String>,
+    },
+    /// Set a cookie
+    Set {
+        /// Cookie name
+        name: String,
+        /// Cookie value
+        value: String,
+        /// Cookie domain
+        #[arg(long)]
+        domain: Option<String>,
+        /// Cookie path
+        #[arg(long)]
+        path: Option<String>,
+        /// Mark cookie as HTTP-only
+        #[arg(long)]
+        http_only: bool,
+        /// Mark cookie as secure
+        #[arg(long)]
+        secure: bool,
+        /// SameSite attribute (Strict, Lax, None)
+        #[arg(long)]
+        same_site: Option<String>,
+        /// Expiration as Unix timestamp
+        #[arg(long)]
+        expires: Option<f64>,
+    },
+    /// Clear all cookies
+    Clear,
 }
 
 #[derive(Subcommand)]
@@ -130,6 +171,30 @@ fn build_command(command: &Commands) -> serde_json::Value {
             ConsoleAction::Logs => commands::console_logs(),
             ConsoleAction::Errors => commands::console_errors(),
             ConsoleAction::Clear => commands::console_clear(),
+        },
+        Commands::Cookies { action } => match action {
+            Some(CookiesAction::Get { urls }) => commands::cookies_get(urls),
+            Some(CookiesAction::Set {
+                name,
+                value,
+                domain,
+                path,
+                http_only,
+                secure,
+                same_site,
+                expires,
+            }) => commands::cookies_set(
+                name,
+                value,
+                domain.as_deref(),
+                path.as_deref(),
+                *http_only,
+                *secure,
+                same_site.as_deref(),
+                *expires,
+            ),
+            Some(CookiesAction::Clear) => commands::cookies_clear(),
+            None => commands::cookies_get(&[]),
         },
         Commands::Eval { expression } => commands::evaluate(expression),
         Commands::React { action } => match action {
