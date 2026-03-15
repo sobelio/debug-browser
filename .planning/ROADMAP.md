@@ -26,6 +26,7 @@ None
 - [x] **Phase 4: Hook State Inspection** — useState/useEffect/custom hook drill-down per component
 - [x] **Phase 5: Claude Code Skill** — Skill definition, LLM command mapping, integration
 - [x] **Phase 6: Automated Testing** — End-to-end tests exercising CLI against a real React app
+- [ ] **Phase 7: Context Saving & AI Token Efficiency** — State persistence, cookie/storage commands, and compact React output modes
 
 ## Phase Details
 
@@ -95,10 +96,21 @@ Plans:
 - [x] 06-02: Test harness script + core command tests (navigate, detect, components, hooks, close)
 - [x] 06-03: Interaction command tests (click, type, eval) + console capture + JSON output
 
+### Phase 7: Context Saving & AI Token Efficiency
+**Goal**: State persistence (save/load auth state, persistent profiles), cookie/storage commands for auth debugging, and compact output modes for React component tree and hooks to reduce AI token usage
+**Depends on**: Phase 6
+**Research**: Complete (agent-browser state/cookie/storage implementation studied)
+**Plans**: 3 plans
+
+Plans:
+- [ ] 07-01: Cookie & storage commands (cookies get/set/clear, storage local/session get/set/clear)
+- [ ] 07-02: State persistence (state save/load, --state flag, --profile flag)
+- [ ] 07-03: Compact React output modes + E2E tests for all Phase 7 features
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
@@ -108,3 +120,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 4. Hook State Inspection | 2/2 | Complete | 2026-03-15 |
 | 5. Claude Code Skill | 2/2 | Complete | 2026-03-15 |
 | 6. Automated Testing | 3/3 | Complete | 2026-03-15 |
+| 7. Context Saving & AI Token Efficiency | 0/3 | Not started | - |
