@@ -120,9 +120,10 @@ echo "Starting fixture preview server..."
 FIXTURE_PID=$!
 
 # Wait for server to be ready (max 10s)
-echo "Waiting for fixture server at http://127.0.0.1:5188..."
+FIXTURE_URL="http://localhost:5188"
+echo "Waiting for fixture server at $FIXTURE_URL..."
 for i in $(seq 1 20); do
-  if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5188 2>/dev/null | grep -q "200"; then
+  if curl -s -o /dev/null -w "%{http_code}" "$FIXTURE_URL" 2>/dev/null | grep -q "200"; then
     echo "Fixture server ready"
     break
   fi
@@ -140,7 +141,7 @@ echo ""
 test_navigate() {
   echo "=== Test: navigate ==="
   local output
-  output=$("$CLI" navigate http://127.0.0.1:5188 2>&1)
+  output=$("$CLI" navigate http://localhost:5188 2>&1)
   assert_contains "$output" "Navigated" "navigate returns success message"
 
   # Give page a moment to fully load React
@@ -211,7 +212,7 @@ test_close() {
   assert_contains "$output" "OK" "close returns OK"
 
   # Re-navigate for any subsequent test plans
-  "$CLI" navigate http://127.0.0.1:5188 > /dev/null 2>&1 || true
+  "$CLI" navigate http://localhost:5188 > /dev/null 2>&1 || true
   sleep 1
 }
 
