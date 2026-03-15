@@ -229,6 +229,57 @@ test_hooks() {
   assert_contains "$json" '"hookCount"' "hooks JSON has hookCount"
 }
 
+test_click() {
+  echo "=== Test: click ==="
+
+  # Get initial Counter state
+  local output
+  output=$("$CLI" hooks Counter 2>&1) || true
+  assert_contains "$output" "0" "Counter starts at 0"
+
+  # Click increment button
+  local click_output
+  click_output=$("$CLI" click "#increment" 2>&1) || true
+  assert_contains "$click_output" "Clicked" "click returns confirmation"
+
+  # Verify state changed
+  sleep 0.5  # brief wait for React re-render
+  output=$("$CLI" hooks Counter 2>&1) || true
+  assert_contains "$output" "1" "Counter incremented to 1 after click"
+}
+
+test_type() {
+  echo "=== Test: type ==="
+
+  local type_output
+  type_output=$("$CLI" type "#todo-input" "New todo item" 2>&1) || true
+  assert_contains "$type_output" "Typed" "type returns confirmation"
+}
+
+test_eval() {
+  echo "=== Test: eval ==="
+
+  # Eval page title
+  local output
+  output=$("$CLI" eval "document.title" 2>&1) || true
+  assert_contains "$output" "Debug Browser" "eval returns page title"
+
+  # Eval with numeric result
+  output=$("$CLI" eval "1 + 1" 2>&1) || true
+  assert_contains "$output" "2" "eval returns computed value"
+
+  # Eval checking DOM
+  output=$("$CLI" eval "document.querySelector('h1').textContent" 2>&1) || true
+  assert_contains "$output" "Debug Browser Test Fixture" "eval reads h1 text"
+
+  # Eval JSON format
+  echo "--- Test: eval JSON format ---"
+  local json
+  json=$("$CLI" --format json eval "document.title" 2>&1) || true
+  assert_contains "$json" '"success"' "eval JSON has success field"
+  assert_contains "$json" "true" "eval JSON success is true"
+}
+
 test_close() {
   echo "=== Test: close ==="
   local output
@@ -249,4 +300,7 @@ test_navigate
 test_react_detect
 test_components
 test_hooks
+test_click
+test_type
+test_eval
 test_close
