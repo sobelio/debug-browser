@@ -25,6 +25,7 @@ None
 - [x] **Phase 3: React DevTools Hook** — Inject React DevTools global hook, capture fiber tree, component hierarchy with props/state
 - [x] **Phase 4: Hook State Inspection** — useState/useEffect/custom hook drill-down per component
 - [x] **Phase 5: Claude Code Skill** — Skill definition, LLM command mapping, integration
+- [ ] **Phase 6: Automated Testing** — End-to-end tests exercising CLI against a real React app
 
 ## Phase Details
 
@@ -83,10 +84,21 @@ Plans:
 - [x] 05-01: Skill definition file, command documentation optimized for LLM usage
 - [x] 05-02: Integration testing, example workflows, skill installation instructions
 
+### Phase 6: Automated Testing
+**Goal**: End-to-end tests that exercise the full CLI + daemon pipeline against a real React app, verifying all commands produce correct output
+**Depends on**: Phase 5
+**Research**: Unlikely (standard test harness setup)
+**Plans**: 3 plans
+
+Plans:
+- [ ] 06-01: Test fixture React app with known component tree, hooks, console output
+- [ ] 06-02: Test harness script + core command tests (navigate, detect, components, hooks, close)
+- [ ] 06-03: Interaction command tests (click, type, eval) + console capture + JSON output
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
@@ -95,3 +107,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 3. React DevTools Hook | 3/3 | Complete | 2026-03-15 |
 | 4. Hook State Inspection | 2/2 | Complete | 2026-03-15 |
 | 5. Claude Code Skill | 2/2 | Complete | 2026-03-15 |
+| 6. Automated Testing | 0/3 | In progress | - |
