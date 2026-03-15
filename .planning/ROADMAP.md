@@ -23,7 +23,7 @@ None
 - [x] **Phase 1: Project Scaffolding** — Rust project setup, dependencies, CLI framework
 - [x] **Phase 2: Daemon + CLI Architecture** — Fork agent-browser daemon, convert Rust CLI to thin client, end-to-end smoke test
 - [x] **Phase 3: React DevTools Hook** — Inject React DevTools global hook, capture fiber tree, component hierarchy with props/state
-- [ ] **Phase 4: Hook State Inspection** — useState/useEffect/custom hook drill-down per component
+- [x] **Phase 4: Hook State Inspection** — useState/useEffect/custom hook drill-down per component
 - [ ] **Phase 5: Claude Code Skill** — Skill definition, LLM command mapping, integration
 
 ## Phase Details
@@ -70,7 +70,7 @@ Plans:
 
 Plans:
 - [x] 04-01: Hook list extraction from fiber memoizedState, hook type identification (state, effect, memo, ref, etc.)
-- [ ] 04-02: Hook value formatting, useEffect dep tracking, custom hook grouping via useDebugValue
+- [x] 04-02: Hook value formatting, useEffect dep tracking, custom hook grouping via useDebugValue
 
 ### Phase 5: Claude Code Skill
 **Goal**: Claude Code skill definition that lets Claude use debug-browser for React debugging
@@ -93,5 +93,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Project Scaffolding | 2/2 | Complete | 2026-03-15 |
 | 2. Daemon + CLI Architecture | 3/3 | Complete | 2026-03-15 |
 | 3. React DevTools Hook | 3/3 | Complete | 2026-03-15 |
-| 4. Hook State Inspection | 1/2 | In progress | - |
+| 4. Hook State Inspection | 2/2 | Complete | 2026-03-15 |
 | 5. Claude Code Skill | 0/2 | Not started | - |

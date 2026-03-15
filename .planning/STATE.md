@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Inspect a running React app's component tree with props and state from the command line
-**Current focus:** Phase 4 in progress — Hook State Inspection
+**Current focus:** Phase 4 complete — Hook State Inspection
 
 ## Current Position
 
 Phase: 4 of 5 (Hook State Inspection)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-03-15 — Completed 04-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-03-15 — Completed 04-02-PLAN.md
 
-Progress: █████████░ 75%
+Progress: ██████████ 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: ~4min
-- Total execution time: ~40min
+- Total execution time: ~44min
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: █████████░ 75%
 | 1 | 2/2 | 5min | 2.5min |
 | 2 | 3/3 | 22min | 7.3min |
 | 3 | 3/3 | 10min | 3.3min |
-| 4 | 1/2 | 3min | 3min |
+| 4 | 2/2 | 7min | 3.5min |
 
 **Recent Trend:**
-- Last 5 plans: 3min, 4min, 3min, 4min, 3min
+- Last 5 plans: 4min, 3min, 4min, 3min, 4min
 - Trend: Stable
 
 ## Accumulated Context
@@ -64,6 +64,8 @@ Progress: █████████░ 75%
 - Component name filter: case-insensitive substring with ancestor preservation
 - Hook type ID: _debugHookTypes authoritative (React 18.3+), structural heuristics fallback
 - Max 50 hooks per component safety limit
+- useDebugValue labels attach to preceding hook entry (not standalone)
+- DEBUG_TYPE_MAP for React internal hook name → our type mapping
 
 ### Deferred Issues
 
@@ -76,5 +78,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Completed 04-01-PLAN.md (hook extraction script + daemon action)
+Stopped at: Completed 04-02-PLAN.md (CLI hooks command + useDebugValue). Phase 4 complete.
 Resume file: None
