@@ -30,6 +30,10 @@ struct Cli {
     /// Load browser state (cookies + localStorage) from a JSON file at launch
     #[arg(long, global = true)]
     state: Option<String>,
+
+    /// Use a persistent browser profile directory (persists cookies/cache/storage between sessions)
+    #[arg(long, global = true)]
+    profile: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -655,6 +659,26 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
+    // Validate mutual exclusion: --profile + --state
+    if cli.profile.is_some() && cli.state.is_some() {
+        let msg = "Cannot use --profile with --state (profile already persists state)";
+        match cli.format {
+            OutputFormat::Json => println!(r#"{{"success":false,"error":"{}"}}"#, msg),
+            OutputFormat::Text => eprintln!("Error: {}", msg),
+        }
+        std::process::exit(1);
+    }
+
+    // Validate mutual exclusion: --profile + --connect
+    if cli.profile.is_some() && cli.connect.is_some() {
+        let msg = "Cannot use --profile with --connect";
+        match cli.format {
+            OutputFormat::Json => println!(r#"{{"success":false,"error":"{}"}}"#, msg),
+            OutputFormat::Text => eprintln!("Error: {}", msg),
+        }
+        std::process::exit(1);
+    }
+
     // Validate --state file exists
     if let Some(ref state_path) = cli.state {
         if !std::path::Path::new(state_path).exists() {
@@ -667,8 +691,8 @@ fn main() -> Result<()> {
         }
     }
 
-    // If --connect or --state is set, send a launch command with the appropriate options first
-    if cli.connect.is_some() || cli.state.is_some() {
+    // If --connect, --state, or --profile is set, send a launch command with the appropriate options first
+    if cli.connect.is_some() || cli.state.is_some() || cli.profile.is_some() {
         let mut launch_cmd = if let Some(ref connect_value) = cli.connect {
             if connect_value.starts_with("ws://")
                 || connect_value.starts_with("wss://")
@@ -710,6 +734,10 @@ fn main() -> Result<()> {
 
         if let Some(ref state_path) = cli.state {
             launch_cmd["storageState"] = serde_json::json!(state_path);
+        }
+
+        if let Some(ref profile_path) = cli.profile {
+            launch_cmd["profile"] = serde_json::json!(profile_path);
         }
 
         match send_command(launch_cmd, &cli.session) {

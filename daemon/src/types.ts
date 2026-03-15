@@ -14,6 +14,7 @@ export interface LaunchCommand extends BaseCommand {
   cdpUrl?: string;
   cdpPort?: number;
   storageState?: string;
+  profile?: string;
 }
 
 export interface NavigateCommand extends BaseCommand {

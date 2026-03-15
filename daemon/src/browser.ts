@@ -5,6 +5,7 @@ import {
   type Page,
 } from 'playwright-core';
 import { fileURLToPath } from 'node:url';
+import { homedir } from 'node:os';
 import type { LaunchCommand } from './types.js';
 
 /** Absolute path to the React DevTools hook injection script. */
@@ -33,12 +34,13 @@ export class BrowserManager {
   private page: Page | null = null;
   private consoleMessages: ConsoleMessage[] = [];
   private pageErrors: PageError[] = [];
+  private isPersistentContext = false;
 
   /**
    * Check if browser is launched
    */
   isLaunched(): boolean {
-    return this.browser !== null;
+    return this.browser !== null || this.isPersistentContext;
   }
 
   /**
@@ -65,12 +67,37 @@ export class BrowserManager {
       return;
     }
 
+    // Validate mutual exclusion
+    if (options.profile && options.storageState) {
+      throw new Error('Cannot use --profile with --state (profile already persists state)');
+    }
+
     const viewport = options.viewport ?? { width: 1280, height: 720 };
 
     // Determine CDP endpoint: prefer cdpUrl over cdpPort
     const cdpEndpoint = options.cdpUrl ?? (options.cdpPort ? String(options.cdpPort) : undefined);
 
-    if (cdpEndpoint) {
+    if (options.profile && cdpEndpoint) {
+      throw new Error('Cannot use --profile with --connect');
+    }
+
+    if (options.profile) {
+      // Persistent browser context — uses a profile directory
+      let profilePath = options.profile;
+      if (profilePath.startsWith('~')) {
+        profilePath = homedir() + profilePath.slice(1);
+      }
+
+      this.context = await chromium.launchPersistentContext(profilePath, {
+        headless: options.headless ?? true,
+        viewport,
+        executablePath: options.executablePath,
+        args: options.args,
+      });
+
+      this.isPersistentContext = true;
+      this.page = this.context.pages()[0] ?? (await this.context.newPage());
+    } else if (cdpEndpoint) {
       // Connect to existing Chrome via CDP
       let cdpUrl: string;
       if (
@@ -228,19 +255,27 @@ export class BrowserManager {
    * Close the browser and clean up
    */
   async close(): Promise<void> {
-    if (this.page) {
-      await this.page.close().catch(() => {});
-    }
-    if (this.context) {
-      await this.context.close().catch(() => {});
-    }
-    if (this.browser) {
-      await this.browser.close().catch(() => {});
+    if (this.isPersistentContext) {
+      // Persistent context: closing the context closes the browser too
+      if (this.context) {
+        await this.context.close().catch(() => {});
+      }
+    } else {
+      if (this.page) {
+        await this.page.close().catch(() => {});
+      }
+      if (this.context) {
+        await this.context.close().catch(() => {});
+      }
+      if (this.browser) {
+        await this.browser.close().catch(() => {});
+      }
     }
 
     this.page = null;
     this.context = null;
     this.browser = null;
+    this.isPersistentContext = false;
     this.consoleMessages = [];
     this.pageErrors = [];
   }

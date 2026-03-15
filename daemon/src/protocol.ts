@@ -22,6 +22,7 @@ const launchSchema = baseCommandSchema.extend({
   cdpUrl: z.string().optional(),
   cdpPort: z.number().positive().optional(),
   storageState: z.string().optional(),
+  profile: z.string().optional(),
 });
 
 const navigateSchema = baseCommandSchema.extend({
