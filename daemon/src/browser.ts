@@ -4,7 +4,13 @@ import {
   type BrowserContext,
   type Page,
 } from 'playwright-core';
+import { fileURLToPath } from 'node:url';
 import type { LaunchCommand } from './types.js';
+
+/** Absolute path to the React DevTools hook injection script. */
+const REACT_HOOK_SCRIPT_PATH = fileURLToPath(
+  new URL('./scripts/react-devtools-hook.js', import.meta.url)
+);
 
 interface ConsoleMessage {
   type: string;
@@ -111,6 +117,9 @@ export class BrowserManager {
 
       this.page = this.context.pages()[0] ?? (await this.context.newPage());
     }
+
+    // Inject React DevTools hook before any page navigation
+    await this.context!.addInitScript({ path: REACT_HOOK_SCRIPT_PATH });
 
     this.context!.setDefaultTimeout(60000);
     this.setupPageTracking(this.page);
