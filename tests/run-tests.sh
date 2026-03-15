@@ -240,7 +240,7 @@ test_click() {
   # Click increment button
   local click_output
   click_output=$("$CLI" click "#increment" 2>&1) || true
-  assert_contains "$click_output" "Clicked" "click returns confirmation"
+  assert_contains "$click_output" "clicked" "click returns confirmation"
 
   # Verify state changed
   sleep 0.5  # brief wait for React re-render
@@ -253,7 +253,7 @@ test_type() {
 
   local type_output
   type_output=$("$CLI" type "#todo-input" "New todo item" 2>&1) || true
-  assert_contains "$type_output" "Typed" "type returns confirmation"
+  assert_contains "$type_output" "typed" "type returns confirmation"
 }
 
 test_eval() {
@@ -280,6 +280,60 @@ test_eval() {
   assert_contains "$json" "true" "eval JSON success is true"
 }
 
+test_console() {
+  echo "=== Test: console ==="
+
+  # Trigger fresh console messages by re-navigating
+  "$CLI" console clear > /dev/null 2>&1 || true
+  "$CLI" navigate "$FIXTURE_URL" > /dev/null 2>&1 || true
+  sleep 2  # wait for React mount + console messages
+
+  # Console logs captures both log and error messages from ConsoleDemo
+  local output
+  output=$("$CLI" console logs 2>&1) || true
+  assert_contains "$output" "Hello from ConsoleDemo" "console logs captures log from ConsoleDemo"
+  assert_contains "$output" "Test error message" "console logs captures console.error from ConsoleDemo"
+
+  # Console errors returns page-level errors (uncaught exceptions)
+  output=$("$CLI" console errors 2>&1) || true
+  assert_contains "$output" "errors" "console errors returns errors field"
+
+  # Console clear
+  "$CLI" console clear > /dev/null 2>&1 || true
+  output=$("$CLI" console logs 2>&1) || true
+  assert_not_contains "$output" "Hello from ConsoleDemo" "console clear removes log messages"
+
+  # Console clear JSON format
+  echo "--- Test: console clear JSON format ---"
+  local json
+  json=$("$CLI" --format json console clear 2>&1) || true
+  assert_contains "$json" '"success"' "console clear JSON has success field"
+  assert_contains "$json" "true" "console clear JSON success is true"
+}
+
+test_json_output() {
+  echo "=== Test: JSON output ==="
+
+  # Components JSON format
+  local json
+  json=$("$CLI" --format json components --depth 2 2>&1) || true
+  assert_contains "$json" '"success"' "components JSON has success field"
+  assert_contains "$json" '"roots"' "components JSON has roots"
+  assert_contains "$json" '"componentCount"' "components JSON has componentCount"
+}
+
+test_session() {
+  echo "=== Test: session ==="
+
+  # Verify a named session works (starts a new daemon)
+  local output
+  output=$("$CLI" --session test-session navigate "$FIXTURE_URL" 2>&1) || true
+  assert_contains "$output" "Debug Browser Test Fixture" "named session navigate works"
+
+  # Clean up the test session
+  "$CLI" --session test-session close > /dev/null 2>&1 || true
+}
+
 test_close() {
   echo "=== Test: close ==="
   local output
@@ -303,4 +357,7 @@ test_hooks
 test_click
 test_type
 test_eval
+test_console
+test_json_output
+test_session
 test_close
