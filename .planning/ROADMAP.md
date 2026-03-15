@@ -92,7 +92,7 @@ Plans:
 
 Plans:
 - [x] 06-01: Test fixture React app with known component tree, hooks, console output
-- [ ] 06-02: Test harness script + core command tests (navigate, detect, components, hooks, close)
+- [x] 06-02: Test harness script + core command tests (navigate, detect, components, hooks, close)
 - [ ] 06-03: Interaction command tests (click, type, eval) + console capture + JSON output
 
 ## Progress
@@ -107,4 +107,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. React DevTools Hook | 3/3 | Complete | 2026-03-15 |
 | 4. Hook State Inspection | 2/2 | Complete | 2026-03-15 |
 | 5. Claude Code Skill | 2/2 | Complete | 2026-03-15 |
-| 6. Automated Testing | 1/3 | In progress | - |
+| 6. Automated Testing | 2/3 | In progress | - |
