@@ -100,6 +100,22 @@ enum Commands {
         /// New value (JSON)
         value: String,
     },
+    /// Look up source file location for a React component
+    Source {
+        /// Component name (substring match)
+        component: String,
+    },
+    /// Reverse-lookup: find the React component owning a DOM element
+    Inspect {
+        /// CSS selector for the DOM element
+        selector: String,
+        /// Include hooks summary in output
+        #[arg(long)]
+        hooks: bool,
+        /// Max serialization depth for hook values (default: 3)
+        #[arg(long)]
+        depth: Option<u32>,
+    },
     /// Manage console logs/errors inbox
     Console {
         #[command(subcommand)]
@@ -257,6 +273,8 @@ fn build_command(command: &Commands) -> serde_json::Value {
                 .unwrap_or_else(|_| serde_json::Value::String(value.clone()));
             commands::set_state(component, *hook_index, parsed)
         }
+        Commands::Source { component } => commands::source(component),
+        Commands::Inspect { selector, hooks, depth } => commands::inspect(selector, *hooks, *depth),
         Commands::Console { action } => match action {
             ConsoleAction::Logs => commands::console_logs(),
             ConsoleAction::Errors => commands::console_errors(),
@@ -398,6 +416,10 @@ fn format_tree_node(
     output.push_str(" (");
     output.push_str(comp_type);
     output.push(')');
+    if let Some(source) = node.get("source").and_then(format_source) {
+        output.push(' ');
+        output.push_str(&source);
+    }
     if let Some(k) = key {
         output.push_str(" key=\"");
         output.push_str(k);
@@ -511,20 +533,25 @@ fn print_hooks(resp: &Response) {
             .get("hookCount")
             .and_then(|v| v.as_u64())
             .unwrap_or(0);
+        let source_str = data
+            .get("source")
+            .and_then(format_source)
+            .map(|s| format!(", {}", s))
+            .unwrap_or_default();
 
         // Handle class components with classState
         if let Some(class_state) = data.get("classState") {
             println!(
-                "Hooks for {} ({}, class component):",
-                component, comp_type
+                "Hooks for {} ({}{}, class component):",
+                component, comp_type, source_str
             );
             println!("  classState: {}", compact_json(class_state));
             return;
         }
 
         println!(
-            "Hooks for {} ({}, {} hooks):",
-            component, comp_type, hook_count
+            "Hooks for {} ({}{}, {} hooks):",
+            component, comp_type, source_str, hook_count
         );
 
         if let Some(hooks) = data.get("hooks").and_then(|v| v.as_array()) {
@@ -674,6 +701,95 @@ fn print_set_state(resp: &Response) {
         let component = data.get("component").and_then(|v| v.as_str()).unwrap_or("?");
         let hook_index = data.get("hookIndex").and_then(|v| v.as_u64()).unwrap_or(0);
         println!("State updated: {} hook [{}]", component, hook_index);
+    } else {
+        println!("No data returned.");
+    }
+}
+
+/// Format a source location from JSON data as "file:line" or "file:line:col".
+fn format_source(source: &serde_json::Value) -> Option<String> {
+    let file = source.get("fileName").and_then(|v| v.as_str())?;
+    let line = source.get("lineNumber").and_then(|v| v.as_u64());
+    match line {
+        Some(l) => Some(format!("{}:{}", file, l)),
+        None => Some(file.to_string()),
+    }
+}
+
+/// Print source location lookup results.
+fn print_source(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        if let Some(err) = data.get("error").and_then(|v| v.as_str()) {
+            eprintln!("Error: {}", err);
+            return;
+        }
+
+        if let Some(matches) = data.get("matches").and_then(|v| v.as_array()) {
+            if matches.is_empty() {
+                println!("No source location available.");
+                return;
+            }
+            for m in matches {
+                let name = m.get("component").and_then(|v| v.as_str()).unwrap_or("?");
+                if let Some(source) = m.get("source").and_then(format_source) {
+                    println!("{} -> {}", name, source);
+                } else {
+                    println!("{} -> (no source info — production build?)", name);
+                }
+            }
+        }
+    } else {
+        println!("No data returned.");
+    }
+}
+
+/// Print inspect (DOM-to-React reverse lookup) results.
+fn print_inspect(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        if let Some(err) = data.get("error").and_then(|v| v.as_str()) {
+            eprintln!("Error: {}", err);
+            return;
+        }
+
+        let component = data.get("component").and_then(|v| v.as_str()).unwrap_or("?");
+        let comp_type = data.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+        let source_str = data
+            .get("source")
+            .and_then(format_source)
+            .map(|s| format!(" {}", s))
+            .unwrap_or_default();
+
+        println!("{} ({}){}", component, comp_type, source_str);
+
+        // Print owner chain
+        if let Some(owners) = data.get("owners").and_then(|v| v.as_array()) {
+            for (i, owner) in owners.iter().enumerate() {
+                let name = owner.get("component").and_then(|v| v.as_str()).unwrap_or("?");
+                let otype = owner.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+                let osource = owner
+                    .get("source")
+                    .and_then(format_source)
+                    .map(|s| format!(" {}", s))
+                    .unwrap_or_default();
+                let prefix = if i == 0 { "  owned by: " } else { "         -> " };
+                println!("{}{} ({}){}", prefix, name, otype, osource);
+            }
+        }
+
+        // Print hooks if included
+        if let Some(hooks) = data.get("hooks").and_then(|v| v.as_array()) {
+            let hook_count = data.get("hookCount").and_then(|v| v.as_u64()).unwrap_or(0);
+            println!("  hooks ({}):", hook_count);
+            for hook in hooks {
+                let index = hook.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+                let hook_type = hook.get("type").and_then(|v| v.as_str()).unwrap_or("unknown");
+                if let Some(value) = hook.get("value") {
+                    println!("    [{}] {}: {}", index, hook_type, compact_json(value));
+                } else {
+                    println!("    [{}] {}", index, hook_type);
+                }
+            }
+        }
     } else {
         println!("No data returned.");
     }
@@ -1199,6 +1315,8 @@ fn main() -> Result<()> {
                         StateAction::Load => print_response(&resp, &cli.format),
                     },
                     Commands::SetState { .. } => print_set_state(&resp),
+                    Commands::Source { .. } => print_source(&resp),
+                    Commands::Inspect { .. } => print_inspect(&resp),
                     Commands::Click { .. } | Commands::Type { .. } => print_action_confirmation(&resp),
                     Commands::Close => print_action_confirmation(&resp),
                 }

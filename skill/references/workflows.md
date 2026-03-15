@@ -33,6 +33,11 @@ debug-browser hooks UserProfile
 #    Compare useState values before/after
 #    If unchanged: the event handler isn't updating state
 #    If changed but UI wrong: check for stale closure or missing dep
+
+# 8. Jump to the source file to fix the issue
+debug-browser source UserProfile
+#    UserProfile -> src/components/UserProfile.tsx:12
+#    Now open that file:line to edit the component
 ```
 
 ## Workflow 2: Console Errors on Page Load

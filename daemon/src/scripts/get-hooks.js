@@ -371,6 +371,50 @@
   var resolvedName = getComponentName(targetFiber) || 'Anonymous';
   var resolvedType = getComponentType(targetFiber);
 
+  // Extract source location if available
+  var resolvedSource = null;
+  // React <19: _debugSource
+  if (targetFiber._debugSource && targetFiber._debugSource.fileName) {
+    resolvedSource = { fileName: targetFiber._debugSource.fileName };
+    if (typeof targetFiber._debugSource.lineNumber === 'number') {
+      resolvedSource.lineNumber = targetFiber._debugSource.lineNumber;
+    }
+    if (typeof targetFiber._debugSource.columnNumber === 'number') {
+      resolvedSource.columnNumber = targetFiber._debugSource.columnNumber;
+    }
+  }
+  // React 19+: _debugStack
+  if (!resolvedSource && targetFiber._debugStack && targetFiber._debugStack.stack) {
+    resolvedSource = parseSourceFromStack(targetFiber._debugStack.stack);
+  }
+
+  function parseSourceFromStack(stack) {
+    var lines = stack.split('\n');
+    var userFrame = null;
+    for (var i = 1; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (line.indexOf('at ') !== 0) continue;
+      if (line.indexOf('jsx-dev-runtime') !== -1) continue;
+      if (line.indexOf('jsx-runtime') !== -1) continue;
+      if (line.indexOf('react-dom') !== -1) continue;
+      if (line.indexOf('react.development') !== -1) continue;
+      if (line.indexOf('chunk-') !== -1) continue;
+      userFrame = line;
+    }
+    if (!userFrame) return null;
+    var match = userFrame.match(/(?:\(|at\s+)(https?:\/\/[^)]+)/);
+    if (!match) return null;
+    var fullUrl = match[1].replace(/\)$/, '');
+    var urlParts = fullUrl.match(/^https?:\/\/[^/]+(\/[^:]+?)(?::(\d+))?(?::(\d+))?$/);
+    if (!urlParts) return null;
+    var filePath = urlParts[1];
+    if (filePath.charAt(0) === '/') filePath = filePath.substring(1);
+    var loc = { fileName: filePath };
+    if (urlParts[2]) loc.lineNumber = parseInt(urlParts[2], 10);
+    if (urlParts[3]) loc.columnNumber = parseInt(urlParts[3], 10);
+    return loc;
+  }
+
   // Get _debugHookTypes if available
   var debugHookTypes = targetFiber._debugHookTypes || null;
 
@@ -382,13 +426,15 @@
 
   // Class components don't have hook linked lists
   if (targetFiber.tag === ClassComponent) {
-    return {
+    var classResult = {
       component: resolvedName,
       type: resolvedType,
       hookCount: 0,
       hooks: [],
       classState: safeSerialize(targetFiber.memoizedState, 0, maxSerializeDepth, null),
     };
+    if (resolvedSource) classResult.source = resolvedSource;
+    return classResult;
   }
 
   while (hookNode && hookIndex < maxHooks) {
@@ -430,10 +476,12 @@
     filteredHooks.push(hooks[h]);
   }
 
-  return {
+  var result = {
     component: resolvedName,
     type: resolvedType,
     hookCount: filteredHooks.length,
     hooks: filteredHooks,
   };
+  if (resolvedSource) result.source = resolvedSource;
+  return result;
 })

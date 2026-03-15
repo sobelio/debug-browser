@@ -240,6 +240,70 @@
     return 'function';
   }
 
+  function getSourceLocation(fiber) {
+    // React <19: _debugSource is set by the Babel/SWC React transform
+    var source = fiber._debugSource;
+    if (source && source.fileName) {
+      var loc = { fileName: source.fileName };
+      if (typeof source.lineNumber === 'number') {
+        loc.lineNumber = source.lineNumber;
+      }
+      if (typeof source.columnNumber === 'number') {
+        loc.columnNumber = source.columnNumber;
+      }
+      return loc;
+    }
+
+    // React 19+: _debugStack is an Error with a stack trace
+    var debugStack = fiber._debugStack;
+    if (debugStack && debugStack.stack) {
+      return parseSourceFromStack(debugStack.stack);
+    }
+
+    return null;
+  }
+
+  // Parse the last meaningful frame from a React _debugStack trace.
+  // Stack format: "Error: react-stack-top-frame\n    at jsxDEV (...)\n    at http://host/src/file.jsx:line:col"
+  // We want the last frame (the user's code), not the jsxDEV wrapper.
+  function parseSourceFromStack(stack) {
+    var lines = stack.split('\n');
+    // Find the last "at" frame — that's typically the user component call site
+    var userFrame = null;
+    for (var i = 1; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (line.indexOf('at ') !== 0) continue;
+      // Skip React internal frames (jsx-dev-runtime, react-dom, etc.)
+      if (line.indexOf('jsx-dev-runtime') !== -1) continue;
+      if (line.indexOf('jsx-runtime') !== -1) continue;
+      if (line.indexOf('react-dom') !== -1) continue;
+      if (line.indexOf('react.development') !== -1) continue;
+      if (line.indexOf('chunk-') !== -1) continue;
+      userFrame = line;
+    }
+    if (!userFrame) return null;
+
+    // Extract URL and line/col from patterns like:
+    //   "at App (http://localhost:5199/src/App.jsx:8:10)"
+    //   "at http://localhost:5199/src/main.jsx:7:116"
+    var match = userFrame.match(/(?:\(|at\s+)(https?:\/\/[^)]+)/);
+    if (!match) return null;
+
+    var fullUrl = match[1].replace(/\)$/, '');
+    // Parse "http://host:port/src/file.jsx:line:col"
+    var urlParts = fullUrl.match(/^https?:\/\/[^/]+(\/[^:]+?)(?::(\d+))?(?::(\d+))?$/);
+    if (!urlParts) return null;
+
+    var filePath = urlParts[1];
+    // Strip leading slash for cleaner display
+    if (filePath.charAt(0) === '/') filePath = filePath.substring(1);
+
+    var loc = { fileName: filePath };
+    if (urlParts[2]) loc.lineNumber = parseInt(urlParts[2], 10);
+    if (urlParts[3]) loc.columnNumber = parseInt(urlParts[3], 10);
+    return loc;
+  }
+
   function isUserComponent(fiber) {
     // Always include function/class components
     if (fiber.tag === FunctionComponent || fiber.tag === ClassComponent) return true;
@@ -270,6 +334,12 @@
           depth: depth,
           children: [],
         };
+
+        // Extract source location if available
+        var source = getSourceLocation(current);
+        if (source) {
+          node.source = source;
+        }
 
         // Extract props if requested
         if (includeProps) {
