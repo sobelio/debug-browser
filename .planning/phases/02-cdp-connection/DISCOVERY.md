@@ -2,71 +2,57 @@
 
 ## Discovery Level: 2 (Standard Research)
 
-## Agent-Browser Architecture (corrected)
+## Architectural Decision: Fork agent-browser daemon
 
-agent-browser (vercel-labs/agent-browser) does NOT use raw CDP from Rust. Its actual architecture:
+**Decision:** Use agent-browser's daemon + Playwright architecture, NOT pure Rust CDP.
 
-- **Node.js daemon** (`src/daemon.ts`) manages a **Playwright** BrowserManager (`src/browser.ts`)
-- **Rust CLI** (`cli/src/`) is a thin synchronous client — no tokio, no WebSocket, no CDP
-- Communication: Rust CLI → Unix socket/TCP → Node.js daemon → Playwright → Chrome
+### agent-browser architecture (what we're adopting)
+- **Node.js daemon** (`src/daemon.ts`) using **Playwright** for browser automation
+- **Rust CLI** (`cli/src/`) as thin synchronous client over Unix socket/TCP
+- Daemon auto-launches on first CLI command, persists across commands
+- Communication: Rust CLI → Unix socket → Node.js daemon → Playwright → Chrome
 
-### Reference files (at /Users/whn/tmp/agent-browser/):
-- `cli/src/connection.rs` — Daemon lifecycle, socket management, send_command()
-- `cli/src/commands.rs` — Command parsing, JSON command construction
-- `cli/src/main.rs` — CLI entry point, flag handling, response printing
-- `cli/src/output.rs` — Response formatting (text + JSON modes)
-- `src/browser.ts` — BrowserManager with Playwright (launch, navigate, CDP session, console capture)
-- `src/daemon.ts` — Unix socket server, command dispatch, auto-launch
-- `src/protocol.ts` — Zod command validation schemas
-- `src/actions.ts` — Command execution (maps commands to Playwright calls)
+### What we fork from agent-browser (/Users/whn/tmp/agent-browser/)
 
-### Key patterns to adopt:
-1. **Session management** — daemon with PID files, socket dir discovery (`connection.rs:86-108`)
-2. **Command protocol** — JSON commands with `{id, action, ...params}` pattern
-3. **Output formatting** — text vs JSON modes, colorized output (`output.rs`)
-4. **Error handling** — ParseError enum with contextual messages (`commands.rs:7-51`)
-5. **Flag parsing** — session, headed, executable-path, extensions (`flags.rs`)
+**Node.js daemon (src/):**
+- `daemon.ts` — Unix socket server, command dispatch, auto-launch, shutdown
+- `browser.ts` — BrowserManager: launch, navigate, evaluate, console/error capture, CDP session
+- `actions.ts` — Command execution: maps CLI commands to Playwright calls
+- `protocol.ts` — Zod command validation schemas
+- `types.ts` — TypeScript interfaces for all commands/responses
 
-## Question: Which CDP approach for Rust?
+**Rust CLI (cli/src/):**
+- `connection.rs` — Daemon lifecycle, socket management, send_command()
+- `commands.rs` — Command parsing, JSON construction
+- `main.rs` — CLI entry point, flag handling
+- `output.rs` — Response formatting (text vs JSON)
+- `flags.rs` — Flag parsing
 
-### Options Evaluated
+### What we strip (not needed for React debugging)
+- Video/recording commands (video_start/stop, recording_*)
+- HAR capture (har_start/stop)
+- Tracing (trace_start/stop)
+- Screencast/streaming (screencast_*, input_mouse/keyboard/touch)
+- Route interception (route, unroute)
+- Downloads (download, waitfordownload)
+- PDF generation
+- Complex locators (getbyrole, getbytext, etc.) — we use CSS selectors
+- Storage state persistence (state_save/load)
 
-**1. chromiumoxide (v0.9.1)**
-- Fully typed CDP bindings generated from Chrome PDL spec
-- Async/tokio, launch + connect-to-existing, all CDP domains
-- Active maintenance (pushed Feb 2026)
-- Handles WebSocket transport, message correlation, event demuxing internally
-- Supports `Page.addScriptToEvaluateOnNewDocument` as a typed command
-- Trade-off: Heavy compile time (~60K generated lines)
+### What we add (React-specific)
+- `components` command — inject React DevTools hook, return fiber tree
+- `hooks` command — inspect useState/useEffect for a component
+- `react-init` — inject hook script before page load via addInitScript
 
-**2. headless_chrome (v1.0.21)**
-- Synchronous API — fundamental mismatch with our async architecture
-- **Eliminated**
+### Dependencies
+- `playwright-core` ^1.57.0 (browser automation)
+- `zod` ^3.22.4 (command validation)
+- `ws` ^8.19.0 (WebSocket for screencast — may not need)
 
-**3. Raw WebSocket**
-- Build CDP transport from tokio-tungstenite
-- Total control, fast compile, ~300 lines of infrastructure
-- Must handle message correlation, event routing, reconnection ourselves
-- No typed CDP bindings — all raw JSON
-
-## Recommendation
-
-**chromiumoxide** — for these reasons:
-1. Mature, actively maintained, async/tokio-native
-2. Typed CDP bindings for ALL domains (Page, Runtime, DOM, etc.)
-3. Built-in browser launch + connect-to-existing-Chrome
-4. Handles all WebSocket transport complexity
-5. `Page.addScriptToEvaluateOnNewDocument` is a first-class typed command
-6. We avoid reinventing CDP transport (~300 lines of tricky async code)
-7. The compile time trade-off is acceptable for correctness and productivity
-
-### Why not daemon architecture like agent-browser?
-- agent-browser uses Playwright (Node.js) — adds a runtime dependency we don't want
-- Our tool is React-specific: we need custom CDP interactions for fiber tree inspection
-- Pure Rust = single binary, no Node.js dependency, simpler deployment
-- chromiumoxide gives us the same capabilities directly
-
-## Dependencies Needed
-
-- `chromiumoxide` — async CDP client with typed bindings
-- `futures-util` — stream combinators for CDP events
+### Impact on roadmap
+Many original phases collapse because Playwright handles them:
+- Phase 3 (Navigation) — already in daemon (navigate, back, forward, reload, waitforurl)
+- Phase 4 (DOM Interaction) — already in daemon (click, type, scroll, gettext, etc.)
+- Phase 5 (Console/Error Inbox) — already in daemon (console, errors commands)
+- Phase 6 (Script Injection) — already in daemon (addinitscript, evaluate)
+- **Only React-specific phases (7-8) and CLI/skill (9-10) remain as new work**
