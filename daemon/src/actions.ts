@@ -27,6 +27,7 @@ import type {
   ReactDetectCommand,
   ComponentsCommand,
   HooksCommand,
+  SetStateCommand,
   CookiesGetCommand,
   CookiesSetCommand,
   StorageGetCommand,
@@ -49,6 +50,12 @@ const COMPONENT_TREE_SCRIPT = readFileSync(
 /** Cached hook extraction script content, loaded once at module init. */
 const HOOKS_SCRIPT = readFileSync(
   fileURLToPath(new URL('./scripts/get-hooks.js', import.meta.url)),
+  'utf-8'
+);
+
+/** Cached set-state script content, loaded once at module init. */
+const SET_STATE_SCRIPT = readFileSync(
+  fileURLToPath(new URL('./scripts/set-state.js', import.meta.url)),
   'utf-8'
 );
 
@@ -118,6 +125,8 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         return await handleComponents(command, browser);
       case 'hooks':
         return await handleHooks(command, browser);
+      case 'set-state':
+        return await handleSetState(command, browser);
       case 'cookies_get':
         return await handleCookiesGet(command, browser);
       case 'cookies_set':
@@ -536,6 +545,25 @@ async function handleHooks(
 
   const result = await page.evaluate(
     `(${HOOKS_SCRIPT})(${JSON.stringify(options)})`
+  );
+
+  return successResponse(command.id, result);
+}
+
+async function handleSetState(
+  command: SetStateCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+
+  const options = {
+    component: command.component,
+    hookIndex: command.hookIndex,
+    value: command.value,
+  };
+
+  const result = await page.evaluate(
+    `(${SET_STATE_SCRIPT})(${JSON.stringify(options)})`
   );
 
   return successResponse(command.id, result);

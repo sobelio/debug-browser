@@ -133,7 +133,41 @@ debug-browser hooks SettingsForm
 debug-browser eval "document.querySelector('.success-toast')?.textContent"
 ```
 
-## Workflow 5: Attach to an Existing Dev Server
+## Workflow 5: Hypothesis Testing with set-state
+
+Test edge cases and reproduce bugs by forcing specific state values.
+
+```bash
+# 1. Navigate and inspect the component
+debug-browser navigate http://localhost:3000
+debug-browser hooks CartSummary
+#    [0] useState: [{"id":1,"qty":2},{"id":2,"qty":1}]
+#    [1] useState: false          # isLoading
+#    [2] useEffect: deps=[2] cleanup=no
+
+# 2. Hypothesis: "What happens with an empty cart?"
+debug-browser set-state CartSummary 0 '[]'
+debug-browser console errors
+#    Check if empty state causes a crash or shows a fallback UI
+
+# 3. Hypothesis: "What if qty is negative?"
+debug-browser set-state CartSummary 0 '[{"id":1,"qty":-1}]'
+debug-browser hooks CartSummary
+debug-browser console errors
+#    Check if negative quantity breaks total calculation
+
+# 4. Hypothesis: "What if loading gets stuck?"
+debug-browser set-state CartSummary 1 true
+debug-browser components --component CartSummary
+#    Check if the loading spinner renders correctly
+
+# 5. Reset to a known good state and verify recovery
+debug-browser set-state CartSummary 1 false
+debug-browser set-state CartSummary 0 '[{"id":1,"qty":2}]'
+debug-browser hooks CartSummary
+```
+
+## Workflow 6: Attach to an Existing Dev Server
 
 Debug a running Chrome instance instead of launching headless.
 
