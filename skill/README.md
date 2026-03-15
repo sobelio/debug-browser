@@ -27,6 +27,47 @@ Ensure the `bin/` directory is on your PATH:
 export PATH="~/.local/bin:$PATH"
 ```
 
+## Nix Install
+
+If you have Nix with flakes enabled, you can install directly:
+
+```bash
+# From the flake (once repo is public)
+nix profile install github:sobelio/debug-browser
+
+# Or build from a local clone
+git clone <repo-url>
+cd debug-browser
+nix build
+./result/bin/debug-browser --help
+```
+
+**Platform notes:**
+- **Linux** — Playwright's Chromium browser is bundled automatically via the Nix wrapper.
+- **macOS** — Run `npx playwright install chromium` or ensure Google Chrome is installed (Nix cannot bundle Chromium on Darwin).
+
+### Development Shell
+
+For contributors, `nix develop` provides Rust and Node.js toolchains:
+
+```bash
+nix develop
+cargo build
+cd daemon && npm install && npm run build
+```
+
+### Flake Input
+
+To use debug-browser as a dependency in another flake:
+
+```nix
+{
+  inputs.debug-browser.url = "github:sobelio/debug-browser";
+}
+```
+
+Then reference `inputs.debug-browser.packages.${system}.default` in your outputs.
+
 ## Development Install
 
 For contributors working on the source:
