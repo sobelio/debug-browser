@@ -43,7 +43,7 @@ Build a Rust CLI + Node.js daemon for debugging React applications, forking agen
 **Plans**: TBD
 
 Plans:
-- [ ] 08-01: TBD (run /gsd:plan-phase 8 to break down)
+- [x] 08-01: Daemon discovery & install script (completed 2026-03-15)
 
 #### Phase 9: Nix Flake
 **Goal**: Create flake.nix that builds Rust CLI + daemon with Playwright, installable via `nix profile install` or as a flake input
@@ -75,6 +75,6 @@ Plans:
 | 5. Claude Code Skill | v1.0 | 2/2 | Complete | 2026-03-15 |
 | 6. Automated Testing | v1.0 | 3/3 | Complete | 2026-03-15 |
 | 7. Context Saving & AI Token Efficiency | v1.0 | 3/3 | Complete | 2026-03-15 |
-| 8. Skill Packaging | v1.1 | 0/? | Not started | - |
+| 8. Skill Packaging | v1.1 | 1/? | In progress | - |
 | 9. Nix Flake | v1.1 | 0/? | Not started | - |
 | 10. Repo & Release | v1.1 | 0/? | Not started | - |
