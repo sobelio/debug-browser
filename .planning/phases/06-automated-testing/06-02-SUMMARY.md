@@ -29,90 +29,45 @@ key-decisions:
 
 patterns-established:
   - "test_X() function grouping for each command domain"
-  - "assert_contains/assert_json_field as minimal bash assertion framework"
+  - "assert_contains/assert_not_contains/assert_json_field as minimal bash assertion framework"
 
 issues-created: []
 
 # Metrics
-duration: 6min
+duration: ~10min
 completed: 2026-03-15
 ---
 
 # Phase 6 Plan 2: Test Harness & Core Command Tests Summary
 
-**Bash E2E test harness with 21 passing tests covering navigate, React detect, components tree/filter, hooks inspection, and daemon close**
-
-## Performance
-
-- **Duration:** 6 min
-- **Started:** 2026-03-15T09:57:45Z
-- **Completed:** 2026-03-15T10:04:12Z
-- **Tasks:** 2
-- **Files modified:** 1
+**Bash E2E test harness with 24 passing tests covering navigate, React detect, components tree/filter/structural, hooks inspection, and daemon close.**
 
 ## Accomplishments
-- Shell test harness with automated setup (build CLI, build fixture, start dev server) and trap-based teardown
-- 21 E2E assertions covering full CLI → daemon → Playwright → browser pipeline
+- Shell test harness with automated setup (build CLI, build daemon, start dev server) and trap-based teardown
+- 24 E2E assertions covering full CLI -> daemon -> Playwright -> browser pipeline
 - Core command coverage: navigate, react detect, components (full tree, filtered, structural), hooks (Counter, TodoList, JSON), close
 
 ## Task Commits
 
-Each task was committed atomically:
-
-1. **Task 1: Create test harness script** - `3533690` (feat)
-2. **Task 2: Write core command tests** - `7e62008` (feat)
+1. **Task 1: Create test harness script** - `bb906b5` feat(06-02): create bash test harness with setup/teardown
+2. **Task 2: Write core command tests** - `ccdda8f` feat(06-02): add core command E2E tests
 
 ## Files Created/Modified
-- `tests/run-tests.sh` — Executable bash test harness with setup/teardown and 21 E2E test assertions
+- `tests/run-tests.sh` — Executable bash test harness with setup/teardown and 24 E2E test assertions
 
 ## Decisions Made
-- Used Vite dev server (`npm run serve-test`) instead of production build+preview — minification destroys React component names, making assertions impossible
-- Added daemon rebuild step to setup — stale `dist/scripts/` files from previous builds caused issues
-- Adjusted assertions to match actual CLI output format (JSON fields in text mode, not human-readable strings)
-
-## Deviations from Plan
-
-### Auto-fixed Issues
-
-**1. [Rule 1 - Bug] Dev server instead of production build**
-- **Found during:** Task 2 (core command tests)
-- **Issue:** `npm run build + preview` minifies component names (App→Wf, Counter→Af), making all component/hook assertions fail
-- **Fix:** Switched to `npm run serve-test` (Vite dev server) which preserves original component names
-- **Files modified:** tests/run-tests.sh
-- **Verification:** All 21 tests pass with dev server
-
-**2. [Rule 1 - Bug] Daemon stale build files**
-- **Found during:** Task 1 (setup)
-- **Issue:** Daemon `dist/scripts/` had stale nested files from previous build
-- **Fix:** Added daemon clean rebuild step to harness setup
-- **Files modified:** tests/run-tests.sh
-- **Verification:** Clean daemon build in each test run
-
-**3. [Rule 2 - Missing Critical] Assertion guards for set -e**
-- **Found during:** Task 2 (test execution)
-- **Issue:** `set -euo pipefail` aborts script on CLI non-zero exits before assertions can report
-- **Fix:** Added `|| true` guards on all CLI calls within test functions
-- **Files modified:** tests/run-tests.sh
-- **Verification:** Failed CLI commands report assertion failures instead of aborting
-
-**4. [Rule 1 - Bug] Assertions matched plan text, not actual CLI output**
-- **Found during:** Task 2 (test writing)
-- **Issue:** Plan assumed human-readable output ("Navigated", "React", "OK") but CLI outputs JSON fields in text mode
-- **Fix:** Updated assertions to match actual output format
-- **Files modified:** tests/run-tests.sh
-- **Verification:** All 21 assertions pass against actual CLI output
-
----
-
-**Total deviations:** 4 auto-fixed (3 bugs, 1 missing critical), 0 deferred
-**Impact on plan:** All fixes necessary for tests to work against actual CLI behavior. No scope creep.
+- Used Vite dev server (`npm run dev`) instead of production build+preview — minification destroys React component names, making assertions impossible
+- Added daemon rebuild step to setup — `dist/scripts/` must exist for daemon to function
+- Adjusted assertions to match actual CLI output format (navigate returns JSON with title/url, close returns {"closed": true}, react detect returns structured JSON in text mode)
+- Component `--component` filter shows matches + ancestors only (not children); tested TodoItem with separate filter query
 
 ## Issues Encountered
-None
+- Production builds minify all React component names (App->Wf, Counter->Af etc.), breaking all name-based tests
+- Daemon requires `dist/scripts/` from `npm run build`, not just TypeScript compilation
+- `set -e` required `|| true` guards on CLI calls to allow assertion reporting on failures
 
-## Next Phase Readiness
-- Test harness ready for extension with interaction/console/JSON tests
-- Ready for 06-03-PLAN.md (interaction and output format tests)
+## Next Step
+Ready for 06-03-PLAN.md (interaction and output format tests).
 
 ---
 *Phase: 06-automated-testing*
