@@ -478,6 +478,9 @@ async function handleComponents(
   const options = {
     depth: command.depth ?? 100,
     includeHost: command.includeHost ?? false,
+    includeProps: command.includeProps ?? true,
+    includeState: command.includeState ?? true,
+    propsDepth: command.propsDepth ?? 3,
   };
 
   // The script is an IIFE-style function expression; we call it with options

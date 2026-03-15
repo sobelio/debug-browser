@@ -5,6 +5,9 @@
 (function (options) {
   var maxDepth = (options && options.depth) || 100;
   var includeHost = !!(options && options.includeHost);
+  var includeProps = options && options.includeProps !== undefined ? options.includeProps : true;
+  var includeState = options && options.includeState !== undefined ? options.includeState : true;
+  var propsDepth = (options && options.propsDepth) || 3;
 
   var hook = window.__REACT_DEVTOOLS_GLOBAL_HOOK__;
   if (!hook) {
@@ -34,6 +37,169 @@
   var SimpleMemoComponent = 15;
   var LazyComponent = 16;
   var HostPortal = 4;
+
+  // --- Safe serialization helper ---
+  function safeSerialize(value, currentDepth, maxSerializeDepth, seen) {
+    if (currentDepth > maxSerializeDepth) {
+      return '[Truncated]';
+    }
+    if (value === null) return null;
+    if (value === undefined) return '[undefined]';
+
+    var type = typeof value;
+
+    if (type === 'string') {
+      if (value.length > 200) {
+        return value.slice(0, 200) + '...';
+      }
+      return value;
+    }
+    if (type === 'number' || type === 'boolean') return value;
+    if (type === 'function') return '[Function]';
+    if (type === 'symbol') return '[Symbol: ' + String(value) + ']';
+    if (type === 'bigint') return value.toString() + 'n';
+
+    // Check for DOM elements
+    if (value instanceof Element) {
+      return '[Element: ' + value.tagName.toLowerCase() + ']';
+    }
+    if (value instanceof Node) {
+      return '[Node: ' + value.nodeName + ']';
+    }
+
+    // Check for React elements ($$typeof is a Symbol for React elements)
+    if (value && value.$$typeof) {
+      var elemType = value.type;
+      var elemName = 'unknown';
+      if (typeof elemType === 'string') {
+        elemName = elemType;
+      } else if (typeof elemType === 'function') {
+        elemName = elemType.displayName || elemType.name || 'Component';
+      } else if (elemType && typeof elemType === 'object') {
+        elemName = elemType.displayName || elemType.name || 'Component';
+      }
+      return '[ReactElement: ' + elemName + ']';
+    }
+
+    // Circular reference detection
+    if (!seen) seen = [];
+    for (var s = 0; s < seen.length; s++) {
+      if (seen[s] === value) return '[Circular]';
+    }
+    seen = seen.concat([value]);
+
+    // Arrays
+    if (Array.isArray(value)) {
+      if (value.length === 0) return [];
+      if (currentDepth === maxSerializeDepth) {
+        return '[Array(' + value.length + ')]';
+      }
+      var arr = [];
+      for (var i = 0; i < value.length; i++) {
+        arr.push(safeSerialize(value[i], currentDepth + 1, maxSerializeDepth, seen));
+      }
+      return arr;
+    }
+
+    // Plain objects
+    if (type === 'object') {
+      var keys = Object.keys(value);
+      if (keys.length === 0) return {};
+      if (currentDepth === maxSerializeDepth) {
+        return '[Object(' + keys.length + ' keys)]';
+      }
+      var obj = {};
+      for (var k = 0; k < keys.length; k++) {
+        var key = keys[k];
+        try {
+          obj[key] = safeSerialize(value[key], currentDepth + 1, maxSerializeDepth, seen);
+        } catch (e) {
+          obj[key] = '[Error: ' + (e && e.message ? e.message : 'unknown') + ']';
+        }
+      }
+      return obj;
+    }
+
+    return String(value);
+  }
+
+  // --- Props extraction ---
+  function extractProps(fiber) {
+    if (!fiber.memoizedProps) return null;
+    var raw = fiber.memoizedProps;
+    if (typeof raw !== 'object' || raw === null) return null;
+
+    var keys = Object.keys(raw);
+    var result = {};
+    var hasKeys = false;
+
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      // Filter out children prop — it's structural, not informative
+      if (key === 'children') continue;
+      try {
+        result[key] = safeSerialize(raw[key], 0, propsDepth, null);
+      } catch (e) {
+        result[key] = '[Error]';
+      }
+      hasKeys = true;
+    }
+
+    return hasKeys ? result : null;
+  }
+
+  // --- State extraction ---
+  function extractState(fiber) {
+    if (fiber.memoizedState === null && fiber.memoizedState === undefined) return null;
+    if (fiber.memoizedState === null) return null;
+
+    // Class components: memoizedState is the state object directly
+    if (fiber.tag === ClassComponent) {
+      var classState = fiber.memoizedState;
+      if (typeof classState === 'object' && classState !== null && Object.keys(classState).length > 0) {
+        return safeSerialize(classState, 0, propsDepth, null);
+      }
+      return null;
+    }
+
+    // Function components: memoizedState is a linked list of hooks
+    if (fiber.tag === FunctionComponent || fiber.tag === ForwardRef ||
+        fiber.tag === SimpleMemoComponent || fiber.tag === MemoComponent) {
+      var hookStates = [];
+      var hook = fiber.memoizedState;
+      var hookIndex = 0;
+      var maxHooks = 50; // Safety limit
+
+      while (hook && hookIndex < maxHooks) {
+        // Identify useState/useReducer hooks:
+        // They have a `queue` property that is not null
+        if (hook.queue !== null && hook.queue !== undefined) {
+          // This is a useState or useReducer hook
+          try {
+            hookStates.push({
+              type: 'state',
+              index: hookIndex,
+              value: safeSerialize(hook.memoizedState, 0, propsDepth, null),
+            });
+          } catch (e) {
+            hookStates.push({
+              type: 'state',
+              index: hookIndex,
+              value: '[Error]',
+            });
+          }
+        }
+        // Skip useEffect, useMemo, useRef, etc. — Phase 4 handles those
+
+        hook = hook.next;
+        hookIndex++;
+      }
+
+      return hookStates.length > 0 ? hookStates : null;
+    }
+
+    return null;
+  }
 
   function getComponentName(fiber) {
     if (!fiber.type) return null;
@@ -104,6 +270,22 @@
           depth: depth,
           children: [],
         };
+
+        // Extract props if requested
+        if (includeProps) {
+          var props = extractProps(current);
+          if (props) {
+            node.props = props;
+          }
+        }
+
+        // Extract state if requested
+        if (includeState) {
+          var state = extractState(current);
+          if (state) {
+            node.state = state;
+          }
+        }
 
         componentCount++;
 

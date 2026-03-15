@@ -175,6 +175,9 @@ const componentsSchema = baseCommandSchema.extend({
   action: z.literal('components'),
   depth: z.number().positive().optional(),
   includeHost: z.boolean().optional(),
+  includeProps: z.boolean().optional(),
+  includeState: z.boolean().optional(),
+  propsDepth: z.number().positive().optional(),
 });
 
 // Union schema for all commands

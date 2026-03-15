@@ -167,6 +167,9 @@ export interface ComponentsCommand extends BaseCommand {
   action: 'components';
   depth?: number;
   includeHost?: boolean;
+  includeProps?: boolean;
+  includeState?: boolean;
+  propsDepth?: number;
 }
 
 // Union of all command types
