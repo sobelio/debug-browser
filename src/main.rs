@@ -770,6 +770,166 @@ fn print_component_tree_compact(resp: &Response, filter: Option<&str>) {
     }
 }
 
+/// Print navigate response in text format.
+fn print_navigate(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        let url = data.get("url").and_then(|v| v.as_str()).unwrap_or("?");
+        let title = data.get("title").and_then(|v| v.as_str()).unwrap_or("");
+        println!("Navigated to: {}", url);
+        if !title.is_empty() {
+            println!("Title: {}", title);
+        }
+    }
+}
+
+/// Print eval response in text format — just the result value.
+fn print_eval(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        if let Some(result) = data.get("result") {
+            if let Some(s) = result.as_str() {
+                println!("{}", s);
+            } else if result.is_null() {
+                println!("null");
+            } else {
+                println!("{}", serde_json::to_string_pretty(result).unwrap_or_else(|_| result.to_string()));
+            }
+        } else {
+            println!("OK");
+        }
+    }
+}
+
+/// Print react detect response in text format.
+fn print_react_detect(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        let detected = data.get("detected").and_then(|v| v.as_bool()).unwrap_or(false);
+        if detected {
+            let version = data.get("version").and_then(|v| v.as_str()).unwrap_or("unknown");
+            let renderers = data.get("rendererCount").and_then(|v| v.as_u64()).unwrap_or(0);
+            println!("React {} detected ({} renderer{})", version, renderers, if renderers != 1 { "s" } else { "" });
+        } else {
+            println!("React not detected on this page.");
+        }
+    }
+}
+
+/// Print console logs in text format.
+fn print_console_logs(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        if let Some(messages) = data.get("messages").and_then(|v| v.as_array()) {
+            if messages.is_empty() {
+                println!("No console messages.");
+            } else {
+                println!("{} console message{}:", messages.len(), if messages.len() != 1 { "s" } else { "" });
+                for msg in messages {
+                    let msg_type = msg.get("type").and_then(|v| v.as_str()).unwrap_or("log");
+                    let text = msg.get("text").and_then(|v| v.as_str()).unwrap_or("");
+                    println!("  [{}] {}", msg_type, text);
+                }
+            }
+        }
+    }
+}
+
+/// Print console errors in text format.
+fn print_console_errors(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        if let Some(errors) = data.get("errors").and_then(|v| v.as_array()) {
+            if errors.is_empty() {
+                println!("No errors.");
+            } else {
+                println!("{} error{}:", errors.len(), if errors.len() != 1 { "s" } else { "" });
+                for err in errors {
+                    let text = err.get("text").and_then(|v| v.as_str())
+                        .or_else(|| err.as_str())
+                        .unwrap_or("?");
+                    println!("  {}", text);
+                }
+            }
+        }
+    }
+}
+
+/// Print cookies list in text format.
+fn print_cookies(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        if let Some(cookies) = data.get("cookies").and_then(|v| v.as_array()) {
+            if cookies.is_empty() {
+                println!("No cookies.");
+            } else {
+                println!("{} cookie{}:", cookies.len(), if cookies.len() != 1 { "s" } else { "" });
+                for cookie in cookies {
+                    let name = cookie.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                    let value = cookie.get("value").and_then(|v| v.as_str()).unwrap_or("");
+                    let domain = cookie.get("domain").and_then(|v| v.as_str()).unwrap_or("");
+                    let path = cookie.get("path").and_then(|v| v.as_str()).unwrap_or("/");
+                    let http_only = cookie.get("httpOnly").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let secure = cookie.get("secure").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let mut flags = Vec::new();
+                    if http_only { flags.push("httpOnly"); }
+                    if secure { flags.push("secure"); }
+                    let flags_str = if flags.is_empty() { String::new() } else { format!(" [{}]", flags.join(", ")) };
+                    println!("  {} = {} ({}{}){}", name, value, domain, path, flags_str);
+                }
+            }
+        }
+    }
+}
+
+/// Print storage data in text format.
+fn print_storage(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        // Single key get: {key, value}
+        if let Some(key) = data.get("key").and_then(|v| v.as_str()) {
+            let value = data.get("value").and_then(|v| v.as_str()).unwrap_or("null");
+            println!("{} = {}", key, value);
+            return;
+        }
+        // All entries: {data: {key: value, ...}}
+        if let Some(entries) = data.get("data").and_then(|v| v.as_object()) {
+            if entries.is_empty() {
+                println!("Empty.");
+            } else {
+                println!("{} entr{}:", entries.len(), if entries.len() != 1 { "ies" } else { "y" });
+                for (k, v) in entries {
+                    match v.as_str() {
+                        Some(s) => println!("  {} = {}", k, s),
+                        None => println!("  {} = {}", k, v),
+                    }
+                }
+            }
+            return;
+        }
+        // Mutation responses: {set: true}, {cleared: true}
+        print_action_confirmation(resp);
+    }
+}
+
+/// Print simple action confirmations (set, cleared, closed, saved, etc.)
+fn print_action_confirmation(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        if data.get("set").and_then(|v| v.as_bool()) == Some(true) {
+            println!("Done.");
+        } else if data.get("clicked").and_then(|v| v.as_bool()) == Some(true) {
+            println!("Done.");
+        } else if data.get("typed").and_then(|v| v.as_bool()) == Some(true) {
+            println!("Done.");
+        } else if data.get("cleared").and_then(|v| v.as_bool()) == Some(true) {
+            println!("Cleared.");
+        } else if data.get("closed").and_then(|v| v.as_bool()) == Some(true) {
+            println!("Browser closed.");
+        } else if let Some(path) = data.get("saved").and_then(|v| v.as_str()) {
+            println!("State saved to: {}", path);
+        } else if let Some(s) = data.as_str() {
+            println!("{}", s);
+        } else {
+            println!("{}", serde_json::to_string_pretty(data).unwrap_or_else(|_| data.to_string()));
+        }
+    } else {
+        println!("OK");
+    }
+}
+
 /// Print compact hooks — types only with count, no values or deps.
 fn print_hooks_compact(resp: &Response) {
     if let Some(ref data) = resp.data {
@@ -965,28 +1125,46 @@ fn main() -> Result<()> {
     match send_command(cmd, &cli.session) {
         Ok(resp) => {
             let success = resp.success;
-            match &cli.command {
-                Commands::Components { component, compact, .. }
-                    if resp.success && cli.format == OutputFormat::Text =>
-                {
-                    if *compact {
-                        print_component_tree_compact(&resp, component.as_deref());
-                    } else {
-                        print_component_tree(&resp, component.as_deref());
+            if cli.format == OutputFormat::Text && resp.success {
+                match &cli.command {
+                    Commands::Components { component, compact, .. } => {
+                        if *compact {
+                            print_component_tree_compact(&resp, component.as_deref());
+                        } else {
+                            print_component_tree(&resp, component.as_deref());
+                        }
                     }
-                }
-                Commands::Hooks { compact, .. }
-                    if resp.success && cli.format == OutputFormat::Text =>
-                {
-                    if *compact {
-                        print_hooks_compact(&resp);
-                    } else {
-                        print_hooks(&resp);
+                    Commands::Hooks { compact, .. } => {
+                        if *compact {
+                            print_hooks_compact(&resp);
+                        } else {
+                            print_hooks(&resp);
+                        }
                     }
+                    Commands::Navigate { .. } => print_navigate(&resp),
+                    Commands::Eval { .. } => print_eval(&resp),
+                    Commands::React { action } => match action {
+                        ReactAction::Detect => print_react_detect(&resp),
+                    },
+                    Commands::Console { action } => match action {
+                        ConsoleAction::Logs => print_console_logs(&resp),
+                        ConsoleAction::Errors => print_console_errors(&resp),
+                        ConsoleAction::Clear => print_action_confirmation(&resp),
+                    },
+                    Commands::Cookies { action } => match action {
+                        Some(CookiesAction::Get { .. }) | None => print_cookies(&resp),
+                        _ => print_action_confirmation(&resp),
+                    },
+                    Commands::Storage { .. } => print_storage(&resp),
+                    Commands::State { action } => match action {
+                        StateAction::Save { .. } => print_action_confirmation(&resp),
+                        StateAction::Load => print_response(&resp, &cli.format),
+                    },
+                    Commands::Click { .. } | Commands::Type { .. } => print_action_confirmation(&resp),
+                    Commands::Close => print_action_confirmation(&resp),
                 }
-                _ => {
-                    print_response(&resp, &cli.format);
-                }
+            } else {
+                print_response(&resp, &cli.format);
             }
             if !success {
                 std::process::exit(1);

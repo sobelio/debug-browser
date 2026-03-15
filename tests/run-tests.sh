@@ -170,7 +170,7 @@ test_react_detect() {
   local output json
   output=$("$CLI" react detect 2>&1) || true
   assert_contains "$output" "detected" "react detect has detected field"
-  assert_contains "$output" "true" "react detect shows detected true"
+  assert_contains "$output" "React" "react detect shows React version"
 
   json=$("$CLI" --format json react detect 2>&1) || true
   assert_contains "$json" '"detected"' "react detect JSON has detected field"
@@ -240,7 +240,7 @@ test_click() {
   # Click increment button
   local click_output
   click_output=$("$CLI" click "#increment" 2>&1) || true
-  assert_contains "$click_output" "clicked" "click returns confirmation"
+  assert_contains "$click_output" "Done" "click returns confirmation"
 
   # Verify state changed
   sleep 0.5  # brief wait for React re-render
@@ -253,7 +253,7 @@ test_type() {
 
   local type_output
   type_output=$("$CLI" type "#todo-input" "New todo item" 2>&1) || true
-  assert_contains "$type_output" "typed" "type returns confirmation"
+  assert_contains "$type_output" "Done" "type returns confirmation"
 }
 
 test_eval() {
