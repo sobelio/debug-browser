@@ -19,6 +19,8 @@ const launchSchema = baseCommandSchema.extend({
     .optional(),
   executablePath: z.string().optional(),
   args: z.array(z.string()).optional(),
+  cdpUrl: z.string().optional(),
+  cdpPort: z.number().positive().optional(),
 });
 
 const navigateSchema = baseCommandSchema.extend({

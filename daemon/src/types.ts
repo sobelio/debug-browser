@@ -11,6 +11,8 @@ export interface LaunchCommand extends BaseCommand {
   viewport?: { width: number; height: number };
   executablePath?: string;
   args?: string[];
+  cdpUrl?: string;
+  cdpPort?: number;
 }
 
 export interface NavigateCommand extends BaseCommand {

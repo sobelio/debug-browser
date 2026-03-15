@@ -22,6 +22,10 @@ struct Cli {
     /// Enable verbose logging
     #[arg(short, long, global = true)]
     verbose: bool,
+
+    /// Connect to an existing Chrome instance via CDP (port number or ws:// URL)
+    #[arg(long, global = true)]
+    connect: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -148,6 +152,60 @@ fn main() -> Result<()> {
             }
         }
         std::process::exit(1);
+    }
+
+    // If --connect is set, send a launch command with CDP connection info first
+    if let Some(ref connect_value) = cli.connect {
+        let launch_cmd = if connect_value.starts_with("ws://")
+            || connect_value.starts_with("wss://")
+            || connect_value.starts_with("http://")
+            || connect_value.starts_with("https://")
+        {
+            serde_json::json!({
+                "id": "connect",
+                "action": "launch",
+                "cdpUrl": connect_value,
+            })
+        } else {
+            // Treat as port number
+            match connect_value.parse::<u16>() {
+                Ok(port) if port > 0 => serde_json::json!({
+                    "id": "connect",
+                    "action": "launch",
+                    "cdpPort": port,
+                }),
+                _ => {
+                    let msg = format!(
+                        "Invalid --connect value: '{}' — expected a port number or ws:// URL",
+                        connect_value
+                    );
+                    match cli.format {
+                        OutputFormat::Json => println!(r#"{{"success":false,"error":"{}"}}"#, msg),
+                        OutputFormat::Text => eprintln!("Error: {}", msg),
+                    }
+                    std::process::exit(1);
+                }
+            }
+        };
+
+        match send_command(launch_cmd, &cli.session) {
+            Ok(resp) if resp.success => { /* CDP connection succeeded */ }
+            Ok(resp) => {
+                let err = resp.error.unwrap_or_else(|| "CDP connection failed".to_string());
+                match cli.format {
+                    OutputFormat::Json => println!(r#"{{"success":false,"error":"{}"}}"#, err),
+                    OutputFormat::Text => eprintln!("Error: {}", err),
+                }
+                std::process::exit(1);
+            }
+            Err(e) => {
+                match cli.format {
+                    OutputFormat::Json => println!(r#"{{"success":false,"error":"{}"}}"#, e),
+                    OutputFormat::Text => eprintln!("Error: {}", e),
+                }
+                std::process::exit(1);
+            }
+        }
     }
 
     // Build and send command

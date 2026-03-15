@@ -48,6 +48,11 @@ export class BrowserManager {
   /**
    * Launch the browser with the specified options.
    * If already launched, this is a no-op.
+   *
+   * Supports three modes:
+   * 1. cdpUrl provided: connect to existing Chrome via CDP URL
+   * 2. cdpPort provided: connect to existing Chrome via CDP on localhost:port
+   * 3. Neither: launch a new headless Chrome instance
    */
   async launch(options: LaunchCommand): Promise<void> {
     if (this.isLaunched()) {
@@ -56,19 +61,58 @@ export class BrowserManager {
 
     const viewport = options.viewport ?? { width: 1280, height: 720 };
 
-    this.browser = await chromium.launch({
-      headless: options.headless ?? true,
-      executablePath: options.executablePath,
-      args: options.args,
-    });
+    // Determine CDP endpoint: prefer cdpUrl over cdpPort
+    const cdpEndpoint = options.cdpUrl ?? (options.cdpPort ? String(options.cdpPort) : undefined);
 
-    this.context = await this.browser.newContext({
-      viewport,
-    });
+    if (cdpEndpoint) {
+      // Connect to existing Chrome via CDP
+      let cdpUrl: string;
+      if (
+        cdpEndpoint.startsWith('ws://') ||
+        cdpEndpoint.startsWith('wss://') ||
+        cdpEndpoint.startsWith('http://') ||
+        cdpEndpoint.startsWith('https://')
+      ) {
+        cdpUrl = cdpEndpoint;
+      } else {
+        // Numeric port or unknown format — treat as localhost port
+        cdpUrl = `http://localhost:${cdpEndpoint}`;
+      }
 
-    this.context.setDefaultTimeout(60000);
+      this.browser = await chromium.connectOverCDP(cdpUrl).catch(() => {
+        throw new Error(
+          `Failed to connect via CDP to ${cdpUrl}. ` +
+            (cdpUrl.includes('localhost')
+              ? `Make sure Chrome is running with --remote-debugging-port=${cdpEndpoint}`
+              : 'Make sure the remote browser is accessible and the URL is correct.')
+        );
+      });
 
-    this.page = this.context.pages()[0] ?? (await this.context.newPage());
+      const contexts = this.browser.contexts();
+      if (contexts.length > 0) {
+        this.context = contexts[0];
+        const pages = this.context.pages();
+        this.page = pages.length > 0 ? pages[0] : await this.context.newPage();
+      } else {
+        this.context = await this.browser.newContext({ viewport });
+        this.page = await this.context.newPage();
+      }
+    } else {
+      // Launch a new browser instance
+      this.browser = await chromium.launch({
+        headless: options.headless ?? true,
+        executablePath: options.executablePath,
+        args: options.args,
+      });
+
+      this.context = await this.browser.newContext({
+        viewport,
+      });
+
+      this.page = this.context.pages()[0] ?? (await this.context.newPage());
+    }
+
+    this.context!.setDefaultTimeout(60000);
     this.setupPageTracking(this.page);
   }
 
