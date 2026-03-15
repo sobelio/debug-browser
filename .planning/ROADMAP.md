@@ -21,7 +21,7 @@ None
 ## Phases
 
 - [x] **Phase 1: Project Scaffolding** — Rust project setup, dependencies, CLI framework
-- [ ] **Phase 2: Daemon + CLI Architecture** — Fork agent-browser daemon, convert Rust CLI to thin client, end-to-end smoke test
+- [x] **Phase 2: Daemon + CLI Architecture** — Fork agent-browser daemon, convert Rust CLI to thin client, end-to-end smoke test
 - [ ] **Phase 3: React DevTools Hook** — Inject React DevTools global hook, capture fiber tree, component hierarchy with props/state
 - [ ] **Phase 4: Hook State Inspection** — useState/useEffect/custom hook drill-down per component
 - [ ] **Phase 5: Claude Code Skill** — Skill definition, LLM command mapping, integration
@@ -47,7 +47,7 @@ Plans:
 Plans:
 - [x] 02-01: Fork agent-browser daemon (daemon.ts, browser.ts, actions.ts, protocol.ts, types.ts), strip unneeded commands, set up package.json
 - [x] 02-02: Convert Rust CLI to thin synchronous client (connection.rs, commands.rs), remove tokio, wire to daemon
-- [ ] 02-03: End-to-end smoke test (navigate, evaluate, console), add --connect flag for existing Chrome
+- [x] 02-03: End-to-end smoke test (navigate, evaluate, console), add --connect flag for existing Chrome
 
 ### Phase 3: React DevTools Hook
 **Goal**: Inject React DevTools global hook, capture fiber tree, expose component hierarchy with props and state
@@ -91,7 +91,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. Project Scaffolding | 2/2 | Complete | 2026-03-15 |
-| 2. Daemon + CLI Architecture | 2/3 | In progress | - |
+| 2. Daemon + CLI Architecture | 3/3 | Complete | 2026-03-15 |
 | 3. React DevTools Hook | 0/3 | Not started | - |
 | 4. Hook State Inspection | 0/2 | Not started | - |
 | 5. Claude Code Skill | 0/2 | Not started | - |
