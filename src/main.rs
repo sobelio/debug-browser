@@ -75,6 +75,9 @@ enum Commands {
         /// Filter to components matching this name (substring match)
         #[arg(long)]
         component: Option<String>,
+        /// Compact output: names-only tree for minimal token usage
+        #[arg(long)]
+        compact: bool,
     },
     /// Inspect hooks for a React component
     Hooks {
@@ -83,6 +86,9 @@ enum Commands {
         /// Max serialization depth for hook values (default: 3)
         #[arg(long)]
         depth: Option<u32>,
+        /// Compact output: types-only list for minimal token usage
+        #[arg(long)]
+        compact: bool,
     },
     /// Manage console logs/errors inbox
     Console {
@@ -225,9 +231,10 @@ fn build_command(command: &Commands) -> serde_json::Value {
             no_props,
             no_state,
             props_depth,
+            compact,
             ..
-        } => commands::components(*depth, *include_host, !no_props, !no_state, *props_depth),
-        Commands::Hooks { component, depth } => commands::hooks(component, *depth),
+        } => commands::components(*depth, *include_host, !no_props, !no_state, *props_depth, *compact),
+        Commands::Hooks { component, depth, compact } => commands::hooks(component, *depth, *compact),
         Commands::Console { action } => match action {
             ConsoleAction::Logs => commands::console_logs(),
             ConsoleAction::Errors => commands::console_errors(),
@@ -634,6 +641,198 @@ fn print_hooks(resp: &Response) {
     }
 }
 
+/// Format a compact component tree node — names only, no props/state/keys.
+/// Counts occurrences of each name at the same level for dedup display.
+fn format_compact_tree_node(
+    node: &serde_json::Value,
+    indent: usize,
+    output: &mut String,
+    filter: Option<&str>,
+) -> bool {
+    let name = node.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+
+    // Check children first
+    let children = node.get("children").and_then(|v| v.as_array());
+    let mut child_output = String::new();
+    let mut child_matched = false;
+    if let Some(children) = children {
+        // Group consecutive children by name for compact display
+        let mut groups: Vec<(String, usize, Vec<&serde_json::Value>)> = Vec::new();
+        for child in children {
+            let child_name = child.get("name").and_then(|v| v.as_str()).unwrap_or("?").to_string();
+            if let Some(last) = groups.last_mut() {
+                if last.0 == child_name {
+                    last.1 += 1;
+                    last.2.push(child);
+                    continue;
+                }
+            }
+            groups.push((child_name, 1, vec![child]));
+        }
+
+        for (group_name, count, group_children) in &groups {
+            if *count > 1 {
+                // Check if any child in the group matches filter
+                let group_self_matches = match filter {
+                    Some(f) => group_name.to_lowercase().contains(&f.to_lowercase()),
+                    None => true,
+                };
+                // Check if any descendant matches
+                let mut any_descendant = false;
+                let mut descendant_output = String::new();
+                // Use first child's children as representative
+                if let Some(first_child) = group_children.first() {
+                    if let Some(grandchildren) = first_child.get("children").and_then(|v| v.as_array()) {
+                        for gc in grandchildren {
+                            if format_compact_tree_node(gc, indent + 2, &mut descendant_output, filter) {
+                                any_descendant = true;
+                            }
+                        }
+                    }
+                }
+                if group_self_matches || any_descendant {
+                    child_matched = true;
+                    let prefix = "  ".repeat(indent + 1);
+                    child_output.push_str(&prefix);
+                    child_output.push_str(group_name);
+                    child_output.push_str(&format!(" (x{})", count));
+                    child_output.push('\n');
+                    child_output.push_str(&descendant_output);
+                }
+            } else {
+                if format_compact_tree_node(group_children[0], indent + 1, &mut child_output, filter) {
+                    child_matched = true;
+                }
+            }
+        }
+    }
+
+    let self_matches = match filter {
+        Some(f) => name.to_lowercase().contains(&f.to_lowercase()),
+        None => true,
+    };
+
+    if !self_matches && !child_matched {
+        return false;
+    }
+
+    let prefix = "  ".repeat(indent);
+    output.push_str(&prefix);
+    output.push_str(name);
+    output.push('\n');
+    output.push_str(&child_output);
+    true
+}
+
+/// Print a compact component tree — names only with component count.
+fn print_component_tree_compact(resp: &Response, filter: Option<&str>) {
+    if let Some(ref data) = resp.data {
+        if let Some(err) = data.get("error").and_then(|v| v.as_str()) {
+            let count = data.get("componentCount").and_then(|v| v.as_u64()).unwrap_or(0);
+            if count == 0 {
+                println!("No React components detected on this page.");
+                return;
+            }
+            eprintln!("Warning: {}", err);
+        }
+
+        let roots = data.get("roots").and_then(|v| v.as_array());
+        let count = data.get("componentCount").and_then(|v| v.as_u64()).unwrap_or(0);
+
+        if let Some(roots) = roots {
+            if roots.is_empty() {
+                println!("No React components detected on this page.");
+                return;
+            }
+
+            let mut output = String::new();
+            for root in roots {
+                format_compact_tree_node(root, 0, &mut output, filter);
+            }
+            if output.ends_with('\n') {
+                output.pop();
+            }
+            if output.is_empty() {
+                if let Some(f) = filter {
+                    println!("No components matching \"{}\" found.", f);
+                } else {
+                    println!("No React components found.");
+                }
+            } else {
+                println!("{}", output);
+                println!("{} components", count);
+            }
+        } else {
+            println!("No React components detected on this page.");
+        }
+    } else {
+        println!("No data returned.");
+    }
+}
+
+/// Print compact hooks — types only with count, no values or deps.
+fn print_hooks_compact(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        if let Some(err) = data.get("error").and_then(|v| v.as_str()) {
+            eprintln!("Error: {}", err);
+            return;
+        }
+
+        let component = data.get("component").and_then(|v| v.as_str()).unwrap_or("Unknown");
+        let hook_count = data.get("hookCount").and_then(|v| v.as_u64()).unwrap_or(0);
+
+        if let Some(_class_state) = data.get("classState") {
+            println!("{}: class component (stateful)", component);
+            return;
+        }
+
+        println!("{}: {} hooks", component, hook_count);
+
+        if let Some(hooks) = data.get("hooks").and_then(|v| v.as_array()) {
+            // Group hooks by their display type name
+            let mut type_counts: Vec<(String, usize)> = Vec::new();
+            for hook in hooks {
+                let hook_type = hook.get("type").and_then(|v| v.as_str()).unwrap_or("unknown");
+                let display_name = match hook_type {
+                    "state" => "useState",
+                    "reducer" => "useReducer",
+                    "effect" => "useEffect",
+                    "layout-effect" => "useLayoutEffect",
+                    "insertion-effect" => "useInsertionEffect",
+                    "ref" => "useRef",
+                    "memo" => "useMemo",
+                    "callback" => "useCallback",
+                    "context" => "useContext",
+                    "transition" => "useTransition",
+                    "deferred-value" => "useDeferredValue",
+                    "id" => "useId",
+                    "sync-external-store" => "useSyncExternalStore",
+                    "debug-value" => "useDebugValue",
+                    "imperative-handle" => "useImperativeHandle",
+                    other => other,
+                };
+                if let Some(last) = type_counts.last_mut() {
+                    if last.0 == display_name {
+                        last.1 += 1;
+                        continue;
+                    }
+                }
+                type_counts.push((display_name.to_string(), 1));
+            }
+
+            for (name, count) in &type_counts {
+                if *count > 1 {
+                    println!("  {} (x{})", name, count);
+                } else {
+                    println!("  {}", name);
+                }
+            }
+        }
+    } else {
+        println!("No data returned.");
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -767,15 +966,23 @@ fn main() -> Result<()> {
         Ok(resp) => {
             let success = resp.success;
             match &cli.command {
-                Commands::Components { component, .. }
+                Commands::Components { component, compact, .. }
                     if resp.success && cli.format == OutputFormat::Text =>
                 {
-                    print_component_tree(&resp, component.as_deref());
+                    if *compact {
+                        print_component_tree_compact(&resp, component.as_deref());
+                    } else {
+                        print_component_tree(&resp, component.as_deref());
+                    }
                 }
-                Commands::Hooks { .. }
+                Commands::Hooks { compact, .. }
                     if resp.success && cli.format == OutputFormat::Text =>
                 {
-                    print_hooks(&resp);
+                    if *compact {
+                        print_hooks_compact(&resp);
+                    } else {
+                        print_hooks(&resp);
+                    }
                 }
                 _ => {
                     print_response(&resp, &cli.format);

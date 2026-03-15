@@ -506,11 +506,12 @@ async function handleComponents(
 ): Promise<Response> {
   const page = browser.getPage();
 
+  const isCompact = command.compact ?? false;
   const options = {
     depth: command.depth ?? 100,
     includeHost: command.includeHost ?? false,
-    includeProps: command.includeProps ?? true,
-    includeState: command.includeState ?? true,
+    includeProps: isCompact ? false : (command.includeProps ?? true),
+    includeState: isCompact ? false : (command.includeState ?? true),
     propsDepth: command.propsDepth ?? 3,
   };
 

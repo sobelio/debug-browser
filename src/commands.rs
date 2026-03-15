@@ -96,6 +96,7 @@ pub fn components(
     include_props: bool,
     include_state: bool,
     props_depth: Option<u32>,
+    compact: bool,
 ) -> Value {
     let mut cmd = json!({
         "id": gen_id(),
@@ -112,11 +113,14 @@ pub fn components(
     if let Some(pd) = props_depth {
         cmd["propsDepth"] = json!(pd);
     }
+    if compact {
+        cmd["compact"] = json!(true);
+    }
     cmd
 }
 
 /// Inspect hooks for a named React component.
-pub fn hooks(component: &str, depth: Option<u32>) -> Value {
+pub fn hooks(component: &str, depth: Option<u32>, compact: bool) -> Value {
     let mut cmd = json!({
         "id": gen_id(),
         "action": "hooks",
@@ -124,6 +128,9 @@ pub fn hooks(component: &str, depth: Option<u32>) -> Value {
     });
     if let Some(d) = depth {
         cmd["depth"] = json!(d);
+    }
+    if compact {
+        cmd["compact"] = json!(true);
     }
     cmd
 }

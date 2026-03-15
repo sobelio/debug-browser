@@ -180,12 +180,14 @@ const componentsSchema = baseCommandSchema.extend({
   includeProps: z.boolean().optional(),
   includeState: z.boolean().optional(),
   propsDepth: z.number().positive().optional(),
+  compact: z.boolean().optional(),
 });
 
 const hooksSchema = baseCommandSchema.extend({
   action: z.literal('hooks'),
   component: z.string().min(1),
   depth: z.number().positive().optional(),
+  compact: z.boolean().optional(),
 });
 
 const cookiesGetSchema = baseCommandSchema.extend({

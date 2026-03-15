@@ -172,12 +172,14 @@ export interface ComponentsCommand extends BaseCommand {
   includeProps?: boolean;
   includeState?: boolean;
   propsDepth?: number;
+  compact?: boolean;
 }
 
 export interface HooksCommand extends BaseCommand {
   action: 'hooks';
   component: string;
   depth?: number;
+  compact?: boolean;
 }
 
 export interface CookiesGetCommand extends BaseCommand {
