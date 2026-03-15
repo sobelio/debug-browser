@@ -87,7 +87,13 @@ fn daemon_ready(session: &str) -> bool {
 }
 
 /// Find the daemon.js entry point.
-/// Priority: DEBUG_BROWSER_DAEMON_PATH env var > daemon/dist/daemon.js relative to manifest dir
+/// Discovery order (first existing file wins):
+/// 1. DEBUG_BROWSER_DAEMON_PATH env var (explicit override)
+/// 2. DEBUG_BROWSER_HOME/daemon/dist/daemon.js (home dir override)
+/// 3. exe_dir/daemon/dist/daemon.js (co-located layout)
+/// 4. exe_dir/../share/debug-browser/daemon/dist/daemon.js (Nix/FHS layout)
+/// 5. exe_dir/../lib/debug-browser/daemon/dist/daemon.js (alternative FHS)
+/// 6. exe_dir/../../daemon/dist/daemon.js (cargo target/release/ dev layout)
 fn find_daemon_js() -> Result<PathBuf, String> {
     // 1. Explicit env var override
     if let Ok(path) = env::var("DEBUG_BROWSER_DAEMON_PATH") {
@@ -101,34 +107,49 @@ fn find_daemon_js() -> Result<PathBuf, String> {
         ));
     }
 
-    // 2. Relative to the cargo manifest directory (compile-time)
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let candidate = manifest_dir.join("daemon/dist/daemon.js");
-    if candidate.exists() {
-        return Ok(candidate);
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    // 2. DEBUG_BROWSER_HOME env var
+    if let Ok(home) = env::var("DEBUG_BROWSER_HOME") {
+        if !home.is_empty() {
+            candidates.push(PathBuf::from(&home).join("daemon/dist/daemon.js"));
+        }
     }
 
-    // 3. Relative to the executable at runtime
+    // 3-6. Exe-relative paths
     if let Ok(exe_path) = env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
-            let candidate = exe_dir.join("daemon/dist/daemon.js");
-            if candidate.exists() {
-                return Ok(candidate);
-            }
-            // Also check one level up (for target/debug/ layout)
+            // 3. Co-located: exe_dir/daemon/dist/daemon.js
+            candidates.push(exe_dir.join("daemon/dist/daemon.js"));
+
             if let Some(parent) = exe_dir.parent() {
+                // 4. Nix/FHS: exe_dir/../share/debug-browser/daemon/dist/daemon.js
+                candidates.push(
+                    parent.join("share/debug-browser/daemon/dist/daemon.js"),
+                );
+                // 5. Alt FHS: exe_dir/../lib/debug-browser/daemon/dist/daemon.js
+                candidates.push(
+                    parent.join("lib/debug-browser/daemon/dist/daemon.js"),
+                );
+
+                // 6. Cargo dev: exe_dir/../../daemon/dist/daemon.js
                 if let Some(grandparent) = parent.parent() {
-                    let candidate = grandparent.join("daemon/dist/daemon.js");
-                    if candidate.exists() {
-                        return Ok(candidate);
-                    }
+                    candidates.push(grandparent.join("daemon/dist/daemon.js"));
                 }
             }
         }
     }
 
+    for candidate in &candidates {
+        if candidate.exists() {
+            return Ok(candidate.clone());
+        }
+    }
+
     Err(
-        "Daemon not found. Set DEBUG_BROWSER_DAEMON_PATH or run `npm run build` in daemon/."
+        "Daemon not found. Set DEBUG_BROWSER_HOME to the install directory, \
+         or DEBUG_BROWSER_DAEMON_PATH to the daemon.js file directly. \
+         If building from source, run `npm run build` in daemon/."
             .to_string(),
     )
 }
