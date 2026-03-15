@@ -15,6 +15,7 @@ Build a Rust CLI + Node.js daemon for debugging React applications, forking agen
 ## Milestones
 
 - ✅ **[v1.0 MVP](milestones/v1.0-ROADMAP.md)** — Phases 1-7 (shipped 2026-03-15)
+- 🚧 **v1.1 Shipping** — Phases 8-10 (in progress)
 
 ## Phases
 
@@ -31,6 +32,38 @@ Build a Rust CLI + Node.js daemon for debugging React applications, forking agen
 
 </details>
 
+### 🚧 v1.1 Shipping (In Progress)
+
+**Milestone Goal:** Make debug-browser installable and distributable — proper skill packaging, Nix flake for reproducible builds, and public repo at sobelio/debug-browser.
+
+#### Phase 8: Skill Packaging
+**Goal**: Clean up skill to standard Claude Code skill format, ensure it works when installed standalone with proper daemon/binary discovery
+**Depends on**: v1.0 complete
+**Research**: Unlikely (existing skill patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 08-01: TBD (run /gsd:plan-phase 8 to break down)
+
+#### Phase 9: Nix Flake
+**Goal**: Create flake.nix that builds Rust CLI + daemon with Playwright, installable via `nix profile install` or as a flake input
+**Depends on**: Phase 8
+**Research**: Likely (Nix + Playwright + Node.js daemon packaging)
+**Research topics**: Nix Rust builds (crane/naersk), bundling Node.js daemon + node_modules in Nix, Playwright browser binary paths in Nix, flake structure for mixed Rust+Node projects
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01: TBD (run /gsd:plan-phase 9 to break down)
+
+#### Phase 10: Repo & Release
+**Goal**: Create sobelio/debug-browser public repo, clean README with install/usage instructions, push code, tag v1.1 release
+**Depends on**: Phase 9
+**Research**: Unlikely (standard git/gh operations)
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01: TBD (run /gsd:plan-phase 10 to break down)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -42,3 +75,6 @@ Build a Rust CLI + Node.js daemon for debugging React applications, forking agen
 | 5. Claude Code Skill | v1.0 | 2/2 | Complete | 2026-03-15 |
 | 6. Automated Testing | v1.0 | 3/3 | Complete | 2026-03-15 |
 | 7. Context Saving & AI Token Efficiency | v1.0 | 3/3 | Complete | 2026-03-15 |
+| 8. Skill Packaging | v1.1 | 0/? | Not started | - |
+| 9. Nix Flake | v1.1 | 0/? | Not started | - |
+| 10. Repo & Release | v1.1 | 0/? | Not started | - |

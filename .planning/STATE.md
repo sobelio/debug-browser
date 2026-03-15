@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-15 after v1.0 milestone)
 
 **Core value:** Inspect a running React app's component tree with props and state from the command line
-**Current focus:** v1.0 MVP shipped — planning next milestone
+**Current focus:** v1.1 Shipping — skill packaging, Nix flake, sobelio/debug-browser repo
 
 ## Current Position
 
-Phase: 7 of 7 (all complete)
-Plan: All plans complete
-Status: v1.0 MVP shipped
-Last activity: 2026-03-15 — v1.0 milestone complete
+Phase: 8 of 10 (Skill Packaging)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-03-15 — Milestone v1.1 created
 
-Progress: ███████████████ 100%
+Progress: ░░░░░░░░░░ 0%
 
 ## Performance Metrics
 
@@ -47,8 +47,12 @@ None.
 
 None.
 
+### Roadmap Evolution
+
+- Milestone v1.1 created: shipping & distribution, 3 phases (Phase 8-10)
+
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: v1.0 milestone complete
+Stopped at: Milestone v1.1 initialization
 Resume file: None
