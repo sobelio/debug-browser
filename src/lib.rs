@@ -2,6 +2,7 @@
 
 pub mod browser;
 pub mod commands;
+pub mod connection;
 pub mod error;
 pub mod inbox;
 pub mod output;
