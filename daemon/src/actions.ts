@@ -29,6 +29,9 @@ import type {
   HooksCommand,
   CookiesGetCommand,
   CookiesSetCommand,
+  StorageGetCommand,
+  StorageSetCommand,
+  StorageClearCommand,
   NavigateData,
   ScreenshotData,
   EvaluateData,
@@ -120,6 +123,12 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         return await handleCookiesSet(command, browser);
       case 'cookies_clear':
         return await handleCookiesClear(command, browser);
+      case 'storage_get':
+        return await handleStorageGet(command, browser);
+      case 'storage_set':
+        return await handleStorageSet(command, browser);
+      case 'storage_clear':
+        return await handleStorageClear(command, browser);
       default: {
         const unknownCommand = command as { id: string; action: string };
         return errorResponse(unknownCommand.id, `Unknown action: ${unknownCommand.action}`);
@@ -561,5 +570,55 @@ async function handleCookiesClear(
   const page = browser.getPage();
   const context = page.context();
   await context.clearCookies();
+  return successResponse(command.id, { cleared: true });
+}
+
+async function handleStorageGet(
+  command: StorageGetCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const storageType = command.type === 'local' ? 'localStorage' : 'sessionStorage';
+
+  if (command.key) {
+    const value = await page.evaluate(`${storageType}.getItem(${JSON.stringify(command.key)})`);
+    return successResponse(command.id, { key: command.key, value });
+  } else {
+    const data = await page.evaluate(`
+      (() => {
+        const storage = ${storageType};
+        const result = {};
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i);
+          if (key) result[key] = storage.getItem(key);
+        }
+        return result;
+      })()
+    `);
+    return successResponse(command.id, { data });
+  }
+}
+
+async function handleStorageSet(
+  command: StorageSetCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const storageType = command.type === 'local' ? 'localStorage' : 'sessionStorage';
+
+  await page.evaluate(
+    `${storageType}.setItem(${JSON.stringify(command.key)}, ${JSON.stringify(command.value)})`
+  );
+  return successResponse(command.id, { set: true });
+}
+
+async function handleStorageClear(
+  command: StorageClearCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const storageType = command.type === 'local' ? 'localStorage' : 'sessionStorage';
+
+  await page.evaluate(`${storageType}.clear()`);
   return successResponse(command.id, { cleared: true });
 }

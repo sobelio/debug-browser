@@ -212,6 +212,24 @@ const cookiesClearSchema = baseCommandSchema.extend({
   action: z.literal('cookies_clear'),
 });
 
+const storageGetSchema = baseCommandSchema.extend({
+  action: z.literal('storage_get'),
+  key: z.string().optional(),
+  type: z.enum(['local', 'session']),
+});
+
+const storageSetSchema = baseCommandSchema.extend({
+  action: z.literal('storage_set'),
+  key: z.string().min(1),
+  value: z.string(),
+  type: z.enum(['local', 'session']),
+});
+
+const storageClearSchema = baseCommandSchema.extend({
+  action: z.literal('storage_clear'),
+  type: z.enum(['local', 'session']),
+});
+
 // Union schema for all commands
 const commandSchema = z.discriminatedUnion('action', [
   launchSchema,
@@ -247,6 +265,9 @@ const commandSchema = z.discriminatedUnion('action', [
   cookiesGetSchema,
   cookiesSetSchema,
   cookiesClearSchema,
+  storageGetSchema,
+  storageSetSchema,
+  storageClearSchema,
 ]);
 
 // Parse result type

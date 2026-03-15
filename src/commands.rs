@@ -203,3 +203,36 @@ pub fn cookies_clear() -> Value {
         "action": "cookies_clear",
     })
 }
+
+/// Get storage entries (localStorage or sessionStorage).
+pub fn storage_get(storage_type: &str, key: Option<&str>) -> Value {
+    let mut cmd = json!({
+        "id": gen_id(),
+        "action": "storage_get",
+        "type": storage_type,
+    });
+    if let Some(k) = key {
+        cmd["key"] = json!(k);
+    }
+    cmd
+}
+
+/// Set a storage entry (localStorage or sessionStorage).
+pub fn storage_set(storage_type: &str, key: &str, value: &str) -> Value {
+    json!({
+        "id": gen_id(),
+        "action": "storage_set",
+        "type": storage_type,
+        "key": key,
+        "value": value,
+    })
+}
+
+/// Clear all entries in localStorage or sessionStorage.
+pub fn storage_clear(storage_type: &str) -> Value {
+    json!({
+        "id": gen_id(),
+        "action": "storage_clear",
+        "type": storage_type,
+    })
+}

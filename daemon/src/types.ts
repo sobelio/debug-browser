@@ -202,6 +202,24 @@ export interface CookiesClearCommand extends BaseCommand {
   action: 'cookies_clear';
 }
 
+export interface StorageGetCommand extends BaseCommand {
+  action: 'storage_get';
+  type: 'local' | 'session';
+  key?: string;
+}
+
+export interface StorageSetCommand extends BaseCommand {
+  action: 'storage_set';
+  type: 'local' | 'session';
+  key: string;
+  value: string;
+}
+
+export interface StorageClearCommand extends BaseCommand {
+  action: 'storage_clear';
+  type: 'local' | 'session';
+}
+
 // Union of all command types
 export type Command =
   | LaunchCommand
@@ -236,7 +254,10 @@ export type Command =
   | HooksCommand
   | CookiesGetCommand
   | CookiesSetCommand
-  | CookiesClearCommand;
+  | CookiesClearCommand
+  | StorageGetCommand
+  | StorageSetCommand
+  | StorageClearCommand;
 
 // Response types
 export interface SuccessResponse<T = unknown> {

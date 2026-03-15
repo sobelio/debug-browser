@@ -91,6 +91,11 @@ enum Commands {
         #[command(subcommand)]
         action: ReactAction,
     },
+    /// Manage browser storage (localStorage / sessionStorage)
+    Storage {
+        #[command(subcommand)]
+        action: StorageAction,
+    },
     /// Manage browser cookies
     Cookies {
         #[command(subcommand)]
@@ -104,6 +109,38 @@ enum Commands {
 enum ReactAction {
     /// Detect whether React is present on the current page
     Detect,
+}
+
+#[derive(Subcommand)]
+enum StorageAction {
+    /// Operate on localStorage
+    Local {
+        #[command(subcommand)]
+        action: Option<StorageSubAction>,
+    },
+    /// Operate on sessionStorage
+    Session {
+        #[command(subcommand)]
+        action: Option<StorageSubAction>,
+    },
+}
+
+#[derive(Subcommand)]
+enum StorageSubAction {
+    /// Get a storage value (or all values if no key given)
+    Get {
+        /// Key to retrieve (omit for all entries)
+        key: Option<String>,
+    },
+    /// Set a storage key-value pair
+    Set {
+        /// Storage key
+        key: String,
+        /// Storage value
+        value: String,
+    },
+    /// Clear all entries
+    Clear,
 }
 
 #[derive(Subcommand)]
@@ -172,6 +209,22 @@ fn build_command(command: &Commands) -> serde_json::Value {
             ConsoleAction::Errors => commands::console_errors(),
             ConsoleAction::Clear => commands::console_clear(),
         },
+        Commands::Storage { action } => {
+            let (storage_type, sub) = match action {
+                StorageAction::Local { action } => ("local", action),
+                StorageAction::Session { action } => ("session", action),
+            };
+            match sub {
+                Some(StorageSubAction::Get { key }) => {
+                    commands::storage_get(storage_type, key.as_deref())
+                }
+                Some(StorageSubAction::Set { key, value }) => {
+                    commands::storage_set(storage_type, key, value)
+                }
+                Some(StorageSubAction::Clear) => commands::storage_clear(storage_type),
+                None => commands::storage_get(storage_type, None),
+            }
+        }
         Commands::Cookies { action } => match action {
             Some(CookiesAction::Get { urls }) => commands::cookies_get(urls),
             Some(CookiesAction::Set {
