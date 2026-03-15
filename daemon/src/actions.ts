@@ -29,6 +29,7 @@ import type {
   HooksCommand,
   SetStateCommand,
   SourceCommand,
+  InspectCommand,
   CookiesGetCommand,
   CookiesSetCommand,
   StorageGetCommand,
@@ -57,6 +58,12 @@ const HOOKS_SCRIPT = readFileSync(
 /** Cached set-state script content, loaded once at module init. */
 const SET_STATE_SCRIPT = readFileSync(
   fileURLToPath(new URL('./scripts/set-state.js', import.meta.url)),
+  'utf-8'
+);
+
+/** Cached inspect-element script content, loaded once at module init. */
+const INSPECT_SCRIPT = readFileSync(
+  fileURLToPath(new URL('./scripts/inspect-element.js', import.meta.url)),
   'utf-8'
 );
 
@@ -136,6 +143,8 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         return await handleSetState(command, browser);
       case 'source':
         return await handleSource(command, browser);
+      case 'inspect':
+        return await handleInspect(command, browser);
       case 'cookies_get':
         return await handleCookiesGet(command, browser);
       case 'cookies_set':
@@ -590,6 +599,25 @@ async function handleSource(
 
   const result = await page.evaluate(
     `(${SOURCE_SCRIPT})(${JSON.stringify(options)})`
+  );
+
+  return successResponse(command.id, result);
+}
+
+async function handleInspect(
+  command: InspectCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+
+  const options = {
+    selector: command.selector,
+    includeHooks: command.includeHooks ?? false,
+    depth: command.depth ?? 3,
+  };
+
+  const result = await page.evaluate(
+    `(${INSPECT_SCRIPT})(${JSON.stringify(options)})`
   );
 
   return successResponse(command.id, result);

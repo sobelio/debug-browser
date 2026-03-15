@@ -194,6 +194,13 @@ export interface SourceCommand extends BaseCommand {
   component: string;
 }
 
+export interface InspectCommand extends BaseCommand {
+  action: 'inspect';
+  selector: string;
+  includeHooks?: boolean;
+  depth?: number;
+}
+
 export interface CookiesGetCommand extends BaseCommand {
   action: 'cookies_get';
   urls?: string[];
@@ -279,6 +286,7 @@ export type Command =
   | HooksCommand
   | SetStateCommand
   | SourceCommand
+  | InspectCommand
   | CookiesGetCommand
   | CookiesSetCommand
   | CookiesClearCommand

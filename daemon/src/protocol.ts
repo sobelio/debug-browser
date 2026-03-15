@@ -202,6 +202,13 @@ const sourceSchema = baseCommandSchema.extend({
   component: z.string().min(1),
 });
 
+const inspectSchema = baseCommandSchema.extend({
+  action: z.literal('inspect'),
+  selector: z.string().min(1),
+  includeHooks: z.boolean().optional(),
+  depth: z.number().positive().optional(),
+});
+
 const cookiesGetSchema = baseCommandSchema.extend({
   action: z.literal('cookies_get'),
   urls: z.array(z.string()).optional(),
@@ -289,6 +296,7 @@ const commandSchema = z.discriminatedUnion('action', [
   hooksSchema,
   setStateSchema,
   sourceSchema,
+  inspectSchema,
   cookiesGetSchema,
   cookiesSetSchema,
   cookiesClearSchema,

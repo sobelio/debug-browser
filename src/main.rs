@@ -105,6 +105,17 @@ enum Commands {
         /// Component name (substring match)
         component: String,
     },
+    /// Reverse-lookup: find the React component owning a DOM element
+    Inspect {
+        /// CSS selector for the DOM element
+        selector: String,
+        /// Include hooks summary in output
+        #[arg(long)]
+        hooks: bool,
+        /// Max serialization depth for hook values (default: 3)
+        #[arg(long)]
+        depth: Option<u32>,
+    },
     /// Manage console logs/errors inbox
     Console {
         #[command(subcommand)]
@@ -263,6 +274,7 @@ fn build_command(command: &Commands) -> serde_json::Value {
             commands::set_state(component, *hook_index, parsed)
         }
         Commands::Source { component } => commands::source(component),
+        Commands::Inspect { selector, hooks, depth } => commands::inspect(selector, *hooks, *depth),
         Commands::Console { action } => match action {
             ConsoleAction::Logs => commands::console_logs(),
             ConsoleAction::Errors => commands::console_errors(),
@@ -723,6 +735,58 @@ fn print_source(resp: &Response) {
                     println!("{} -> {}", name, source);
                 } else {
                     println!("{} -> (no source info — production build?)", name);
+                }
+            }
+        }
+    } else {
+        println!("No data returned.");
+    }
+}
+
+/// Print inspect (DOM-to-React reverse lookup) results.
+fn print_inspect(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        if let Some(err) = data.get("error").and_then(|v| v.as_str()) {
+            eprintln!("Error: {}", err);
+            return;
+        }
+
+        let component = data.get("component").and_then(|v| v.as_str()).unwrap_or("?");
+        let comp_type = data.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+        let source_str = data
+            .get("source")
+            .and_then(format_source)
+            .map(|s| format!(" {}", s))
+            .unwrap_or_default();
+
+        println!("{} ({}){}", component, comp_type, source_str);
+
+        // Print owner chain
+        if let Some(owners) = data.get("owners").and_then(|v| v.as_array()) {
+            for (i, owner) in owners.iter().enumerate() {
+                let name = owner.get("component").and_then(|v| v.as_str()).unwrap_or("?");
+                let otype = owner.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+                let osource = owner
+                    .get("source")
+                    .and_then(format_source)
+                    .map(|s| format!(" {}", s))
+                    .unwrap_or_default();
+                let prefix = if i == 0 { "  owned by: " } else { "         -> " };
+                println!("{}{} ({}){}", prefix, name, otype, osource);
+            }
+        }
+
+        // Print hooks if included
+        if let Some(hooks) = data.get("hooks").and_then(|v| v.as_array()) {
+            let hook_count = data.get("hookCount").and_then(|v| v.as_u64()).unwrap_or(0);
+            println!("  hooks ({}):", hook_count);
+            for hook in hooks {
+                let index = hook.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+                let hook_type = hook.get("type").and_then(|v| v.as_str()).unwrap_or("unknown");
+                if let Some(value) = hook.get("value") {
+                    println!("    [{}] {}: {}", index, hook_type, compact_json(value));
+                } else {
+                    println!("    [{}] {}", index, hook_type);
                 }
             }
         }
@@ -1252,6 +1316,7 @@ fn main() -> Result<()> {
                     },
                     Commands::SetState { .. } => print_set_state(&resp),
                     Commands::Source { .. } => print_source(&resp),
+                    Commands::Inspect { .. } => print_inspect(&resp),
                     Commands::Click { .. } | Commands::Type { .. } => print_action_confirmation(&resp),
                     Commands::Close => print_action_confirmation(&resp),
                 }

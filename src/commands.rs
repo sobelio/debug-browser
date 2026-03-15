@@ -155,6 +155,22 @@ pub fn source(component: &str) -> Value {
     })
 }
 
+/// Reverse-lookup: find the React component owning a DOM element.
+pub fn inspect(selector: &str, include_hooks: bool, depth: Option<u32>) -> Value {
+    let mut cmd = json!({
+        "id": gen_id(),
+        "action": "inspect",
+        "selector": selector,
+    });
+    if include_hooks {
+        cmd["includeHooks"] = json!(true);
+    }
+    if let Some(d) = depth {
+        cmd["depth"] = json!(d);
+    }
+    cmd
+}
+
 /// Detect whether React is present on the current page.
 pub fn react_detect() -> Value {
     json!({
