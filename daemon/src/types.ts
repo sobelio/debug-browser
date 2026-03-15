@@ -163,6 +163,12 @@ export interface ReactDetectCommand extends BaseCommand {
   action: 'react-detect';
 }
 
+export interface ComponentsCommand extends BaseCommand {
+  action: 'components';
+  depth?: number;
+  includeHost?: boolean;
+}
+
 // Union of all command types
 export type Command =
   | LaunchCommand
@@ -192,7 +198,8 @@ export type Command =
   | CountCommand
   | KeyboardCommand
   | PressCommand
-  | ReactDetectCommand;
+  | ReactDetectCommand
+  | ComponentsCommand;
 
 // Response types
 export interface SuccessResponse<T = unknown> {

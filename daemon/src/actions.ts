@@ -1,5 +1,7 @@
 import type { Page } from 'playwright-core';
 import type { BrowserManager } from './browser.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import type {
   Command,
   Response,
@@ -23,12 +25,19 @@ import type {
   CountCommand,
   AddInitScriptCommand,
   ReactDetectCommand,
+  ComponentsCommand,
   NavigateData,
   ScreenshotData,
   EvaluateData,
   ContentData,
 } from './types.js';
 import { successResponse, errorResponse } from './protocol.js';
+
+/** Cached fiber tree walker script content, loaded once at module init. */
+const COMPONENT_TREE_SCRIPT = readFileSync(
+  fileURLToPath(new URL('./scripts/get-component-tree.js', import.meta.url)),
+  'utf-8'
+);
 
 /**
  * Execute a command and return a response
@@ -92,6 +101,8 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         return await handleAddInitScript(command, browser);
       case 'react-detect':
         return await handleReactDetect(command, browser);
+      case 'components':
+        return await handleComponents(command, browser);
       default: {
         const unknownCommand = command as { id: string; action: string };
         return errorResponse(unknownCommand.id, `Unknown action: ${unknownCommand.action}`);
@@ -455,5 +466,24 @@ async function handleReactDetect(
       rendererCount: hook._debugBrowser.rendererCount,
     };
   });
+  return successResponse(command.id, result);
+}
+
+async function handleComponents(
+  command: ComponentsCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+
+  const options = {
+    depth: command.depth ?? 100,
+    includeHost: command.includeHost ?? false,
+  };
+
+  // The script is an IIFE-style function expression; we call it with options
+  const result = await page.evaluate(
+    `(${COMPONENT_TREE_SCRIPT})(${JSON.stringify(options)})`
+  );
+
   return successResponse(command.id, result);
 }
