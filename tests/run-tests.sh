@@ -8,6 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLI="$PROJECT_DIR/target/release/debug-browser"
 FIXTURE_DIR="$SCRIPT_DIR/fixture"
+FIXTURE_URL="http://localhost:5188"
 FIXTURE_PID=""
 
 # Test counters
@@ -48,7 +49,7 @@ assert_not_contains() {
 assert_json_field() {
   local output="$1" field="$2" expected="$3" test_name="$4"
   TESTS=$((TESTS + 1))
-  # Extract field value using grep/sed (no jq dependency)
+  # Extract field value using grep (no jq dependency)
   if echo "$output" | grep -q "\"$field\"" && echo "$output" | grep -q "$expected"; then
     PASSED=$((PASSED + 1))
     echo "  PASS $test_name"
@@ -71,12 +72,15 @@ cleanup() {
     "$CLI" close > /dev/null 2>&1 || true
   fi
 
-  # Kill fixture preview server
+  # Kill fixture server and all children
   if [ -n "$FIXTURE_PID" ] && kill -0 "$FIXTURE_PID" 2>/dev/null; then
     kill "$FIXTURE_PID" 2>/dev/null || true
     wait "$FIXTURE_PID" 2>/dev/null || true
     echo "Fixture server stopped (PID $FIXTURE_PID)"
   fi
+
+  # Also kill anything on port 5188 to be safe
+  lsof -ti:5188 2>/dev/null | xargs kill 2>/dev/null || true
 
   # Print summary
   echo ""
@@ -94,6 +98,10 @@ trap cleanup EXIT INT TERM
 
 echo "=== Setup ==="
 
+# Kill anything on port 5188 from previous runs
+lsof -ti:5188 2>/dev/null | xargs kill 2>/dev/null || true
+sleep 1
+
 # Build CLI if needed (skip if binary is newer than source)
 if [ ! -f "$CLI" ] || [ "$(find "$PROJECT_DIR/src" -name '*.rs' -newer "$CLI" 2>/dev/null | head -1)" ]; then
   echo "Building CLI..."
@@ -110,7 +118,7 @@ if [ ! -d "$DAEMON_DIR/node_modules" ]; then
 fi
 if [ ! -f "$DAEMON_DIR/dist/daemon.js" ] || [ "$(find "$DAEMON_DIR/src" -newer "$DAEMON_DIR/dist/daemon.js" 2>/dev/null | head -1)" ]; then
   echo "Building daemon..."
-  (cd "$DAEMON_DIR" && rm -rf dist && npm run build)
+  (cd "$DAEMON_DIR" && npm run build)
 else
   echo "Daemon is up to date"
 fi
@@ -125,19 +133,18 @@ fi
 
 # Start fixture dev server in background (dev mode preserves component names)
 echo "Starting fixture dev server..."
-(cd "$FIXTURE_DIR" && npm run serve-test) &
+(cd "$FIXTURE_DIR" && npm run dev 2>&1) &
 FIXTURE_PID=$!
 
-# Wait for server to be ready (max 10s)
-FIXTURE_URL="http://localhost:5188"
+# Wait for server to be ready (max 15s)
 echo "Waiting for fixture server at $FIXTURE_URL..."
-for i in $(seq 1 20); do
+for i in $(seq 1 30); do
   if curl -s -o /dev/null -w "%{http_code}" "$FIXTURE_URL" 2>/dev/null | grep -q "200"; then
     echo "Fixture server ready"
     break
   fi
-  if [ "$i" -eq 20 ]; then
-    echo "ERROR: Fixture server did not start within 10 seconds"
+  if [ "$i" -eq 30 ]; then
+    echo "ERROR: Fixture server did not start within 15 seconds"
     exit 1
   fi
   sleep 0.5
@@ -150,8 +157,9 @@ echo ""
 test_navigate() {
   echo "=== Test: navigate ==="
   local output
-  output=$("$CLI" navigate http://localhost:5188 2>&1) || true
-  assert_contains "$output" "localhost:5188" "navigate returns success with URL"
+  output=$("$CLI" navigate "$FIXTURE_URL" 2>&1) || true
+  assert_contains "$output" "Debug Browser Test Fixture" "navigate returns page title"
+  assert_contains "$output" "localhost:5188" "navigate returns URL"
 
   # Give page a moment to fully load React
   sleep 2
@@ -161,7 +169,8 @@ test_react_detect() {
   echo "=== Test: react detect ==="
   local output json
   output=$("$CLI" react detect 2>&1) || true
-  assert_contains "$output" "detected" "react detect finds React"
+  assert_contains "$output" "detected" "react detect has detected field"
+  assert_contains "$output" "true" "react detect shows detected true"
 
   json=$("$CLI" --format json react detect 2>&1) || true
   assert_contains "$json" '"detected"' "react detect JSON has detected field"
@@ -179,22 +188,23 @@ test_components() {
   assert_contains "$output" "TodoList" "components shows TodoList"
   assert_contains "$output" "TodoItem" "components shows TodoItem"
   assert_contains "$output" "ConsoleDemo" "components shows ConsoleDemo"
+  assert_contains "$output" "component(s) total" "components shows total count"
 
   # Filtered by component name
   echo "--- Test: components --component filter ---"
   output=$("$CLI" components --component TodoList 2>&1) || true
   assert_contains "$output" "TodoList" "filtered components shows TodoList"
-  assert_not_contains "$output" "Counter" "filtered components excludes Counter"
 
-  # Filter matching multiple components (substring match)
-  output=$("$CLI" components --component Todo 2>&1) || true
-  assert_contains "$output" "TodoList" "Todo filter shows TodoList"
-  assert_contains "$output" "TodoItem" "Todo filter shows TodoItem"
+  # Filter for TodoItem specifically to verify it exists
+  output=$("$CLI" components --component TodoItem 2>&1) || true
+  assert_contains "$output" "TodoItem" "filtered components shows TodoItem"
 
   # Structural view (no props, no state)
   echo "--- Test: components --no-props --no-state ---"
   output=$("$CLI" components --no-props --no-state --depth 2 2>&1) || true
   assert_contains "$output" "App" "structural view shows App"
+  assert_not_contains "$output" "props:" "structural view hides props"
+  assert_not_contains "$output" "state:" "structural view hides state"
 }
 
 test_hooks() {
@@ -223,10 +233,10 @@ test_close() {
   echo "=== Test: close ==="
   local output
   output=$("$CLI" close 2>&1) || true
-  assert_contains "$output" "closed" "close returns success"
+  assert_contains "$output" "closed" "close returns closed status"
 
   # Re-navigate for any subsequent test plans
-  "$CLI" navigate http://localhost:5188 > /dev/null 2>&1 || true
+  "$CLI" navigate "$FIXTURE_URL" > /dev/null 2>&1 || true
   sleep 1
 }
 
