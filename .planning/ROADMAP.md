@@ -24,7 +24,7 @@ None
 - [x] **Phase 2: Daemon + CLI Architecture** — Fork agent-browser daemon, convert Rust CLI to thin client, end-to-end smoke test
 - [x] **Phase 3: React DevTools Hook** — Inject React DevTools global hook, capture fiber tree, component hierarchy with props/state
 - [x] **Phase 4: Hook State Inspection** — useState/useEffect/custom hook drill-down per component
-- [ ] **Phase 5: Claude Code Skill** — Skill definition, LLM command mapping, integration
+- [x] **Phase 5: Claude Code Skill** — Skill definition, LLM command mapping, integration
 
 ## Phase Details
 
@@ -81,7 +81,7 @@ Plans:
 
 Plans:
 - [x] 05-01: Skill definition file, command documentation optimized for LLM usage
-- [ ] 05-02: Integration testing, example workflows, skill installation instructions
+- [x] 05-02: Integration testing, example workflows, skill installation instructions
 
 ## Progress
 
@@ -94,4 +94,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Daemon + CLI Architecture | 3/3 | Complete | 2026-03-15 |
 | 3. React DevTools Hook | 3/3 | Complete | 2026-03-15 |
 | 4. Hook State Inspection | 2/2 | Complete | 2026-03-15 |
-| 5. Claude Code Skill | 1/2 | In progress | - |
+| 5. Claude Code Skill | 2/2 | Complete | 2026-03-15 |
