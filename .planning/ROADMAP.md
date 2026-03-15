@@ -46,7 +46,7 @@ Plans:
 - [x] 08-01: Daemon discovery & install script (completed 2026-03-15)
 - [x] 08-02: Documentation & standalone verification (completed 2026-03-15)
 
-#### Phase 9: Nix Flake
+#### Phase 9: Nix Flake ✅
 **Goal**: Create flake.nix that builds Rust CLI + daemon with Playwright, installable via `nix profile install` or as a flake input
 **Depends on**: Phase 8
 **Research**: Likely (Nix + Playwright + Node.js daemon packaging)
