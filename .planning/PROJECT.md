@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A Rust CLI and Claude Code skill that gives developers (and Claude) a headless debugging browser purpose-built for React applications. Navigate sites, inspect the React component tree, examine hook state, capture console logs and errors — all through a command-based interface optimized for LLM interaction.
+A Rust CLI and Claude Code skill that gives developers (and Claude) a headless debugging browser purpose-built for React applications. Navigate sites, inspect the React component tree with props and state, examine hook state for all standard React hook types, capture console logs and errors, manage cookies and storage, persist auth state across sessions — all through a command-based interface optimized for LLM interaction.
 
 ## Core Value
 
@@ -12,51 +12,59 @@ Inspect a running React app's component tree with props and state from the comma
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Headless browser navigation and interaction (click, type, navigate) — v1.0
+- ✓ React component tree inspection (hierarchy, props, state per component) — v1.0
+- ✓ Hook state inspection (useState values, useEffect deps, custom hooks) — v1.0
+- ✓ Console log/error/warning capture with stateful inbox (accumulate, query, clear) — v1.0
+- ✓ JavaScript error capture and surfacing — v1.0
+- ✓ Script injection system for loading React DevTools hooks and custom introspection scripts — v1.0
+- ✓ Command-based CLI interface (all operations as commands, no TUI) — v1.0
+- ✓ Claude Code skill integration (skill definition that Claude can use for React debugging) — v1.0
+- ✓ DOM inspection and element selection (CSS selectors, text content) — v1.0
+- ✓ Cookie and storage management (get/set/clear for cookies, localStorage, sessionStorage) — v1.0
+- ✓ State persistence (save/load auth state, --profile for persistent browser context) — v1.0
+- ✓ Compact output modes for AI token efficiency (--compact on components/hooks) — v1.0
 
 ### Active
 
-- [ ] Headless browser navigation and interaction (click, type, scroll, navigate)
-- [ ] React component tree inspection (hierarchy, props, state per component)
-- [ ] Hook state inspection (useState values, useEffect deps, custom hooks)
-- [ ] Console log/error/warning capture with stateful inbox (accumulate, query, clear)
-- [ ] JavaScript error capture and surfacing
-- [ ] Script injection system for loading React DevTools hooks and custom introspection scripts
-- [ ] Command-based CLI interface (all operations as commands, no TUI)
-- [ ] Claude Code skill integration (skill definition that Claude can use for React debugging)
-- [ ] DOM inspection and element selection (CSS selectors, text content)
+(None — v1.0 shipped. Define in next milestone.)
 
 ### Out of Scope
 
 - Visual page rendering / screenshots — not needed, component tree and DOM are sufficient
 - Performance profiling / flame graphs — deferred to future milestone
 - TUI / interactive terminal panels — command-based only, optimized for LLM usage
-- Network request/response inspection (HAR capture) — may add later but not v1
+- Network request/response inspection (HAR capture) — may add later
+- Windows/TCP support — Unix-only for now
 
 ## Context
 
-- Inspired by and likely forking/importing code from `vercel-labs/agent-browser`
-- agent-browser provides headless browser automation via CDP (Chrome DevTools Protocol) — we extend this with deep React introspection
-- React DevTools exposes a global hook (`__REACT_DEVTOOLS_GLOBAL_HOOK__`) that can be injected before React loads to capture the fiber tree, component instances, hook state, etc.
-- The inbox model: console messages, errors, and React warnings accumulate like an inbox that commands can query, filter, and clear — critical for LLM workflows where you check state at discrete points rather than watching a stream
-- Dual-mode: standalone CLI for developers + Claude Code skill so Claude can autonomously debug React apps
+Shipped v1.0 with ~5,756 LOC across Rust CLI (1,612), Node.js daemon (2,668), tests (442), and skill docs (1,034).
+Tech stack: Rust (clap, serde_json, thiserror 2), Node.js (Playwright, Zod), Vite test fixture.
+Architecture: Forked from agent-browser — Node.js daemon with Playwright for browser automation, Rust CLI as thin synchronous client over Unix socket.
+56 E2E test assertions covering all commands.
 
 ## Constraints
 
-- **Language**: Rust — for performance, reliability, and developer preference
-- **Browser Protocol**: CDP (Chrome DevTools Protocol) — industry standard, same as agent-browser uses
-- **Interface**: Command-based only — no TUI, no interactive mode. Every operation is a discrete command with structured output. This is non-negotiable for LLM compatibility.
-- **React Hook Injection**: Must inject before React initializes — requires script injection at page load time via CDP
+- **Language**: Rust CLI + Node.js daemon — Rust for performance/reliability, Node.js for Playwright ecosystem
+- **Browser Automation**: Playwright (via forked agent-browser daemon) — not raw CDP
+- **Interface**: Command-based only — no TUI, no interactive mode. Every operation is a discrete command with structured output. Non-negotiable for LLM compatibility.
+- **React Hook Injection**: Must inject before React initializes — script injection at page load time
+- **Platform**: Unix-only (macOS/Linux) — no Windows support
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Rust for CLI | Developer preference, performance for browser automation | — Pending |
-| Fork/import agent-browser code | Leverage existing CDP automation, don't reinvent the wheel | — Pending |
-| Command-based only (no TUI) | LLM-first design — Claude and other LLMs need structured command I/O | — Pending |
-| Stateful inbox for logs/errors | LLMs check state at discrete points, not via streams | — Pending |
-| React DevTools hook injection | Standard approach for component tree access, same as React DevTools extension | — Pending |
+| Rust for CLI | Developer preference, performance | ✓ Good — 1,612 LOC, fast sync client |
+| Fork agent-browser daemon | Leverage Playwright automation | ✓ Good — collapsed 4 phases into 1 |
+| Command-based only (no TUI) | LLM-first design | ✓ Good — Claude skill works well |
+| Stateful inbox for logs/errors | LLMs check at discrete points | ✓ Good — accumulate/query/clear model |
+| React DevTools hook injection | Standard fiber tree access | ✓ Good — full component/hook inspection |
+| Daemon + Playwright over pure Rust CDP | Playwright handles navigation/DOM/console | ✓ Good — massive scope reduction |
+| Unix socket only (no TCP) | Simpler, local-only use case | ✓ Good — no Windows needed yet |
+| _debugHookTypes for hook identification | Authoritative in React 18.3+ | ✓ Good — heuristic fallback for older |
+| Dev server for E2E tests | Minification destroys component names | ✓ Good — reliable test fixture |
 
 ---
-*Last updated: 2026-03-15 after initialization*
+*Last updated: 2026-03-15 after v1.0 milestone*
