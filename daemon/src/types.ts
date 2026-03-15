@@ -13,6 +13,7 @@ export interface LaunchCommand extends BaseCommand {
   args?: string[];
   cdpUrl?: string;
   cdpPort?: number;
+  storageState?: string;
 }
 
 export interface NavigateCommand extends BaseCommand {
@@ -220,6 +221,15 @@ export interface StorageClearCommand extends BaseCommand {
   type: 'local' | 'session';
 }
 
+export interface StateSaveCommand extends BaseCommand {
+  action: 'state_save';
+  path: string;
+}
+
+export interface StateLoadCommand extends BaseCommand {
+  action: 'state_load';
+}
+
 // Union of all command types
 export type Command =
   | LaunchCommand
@@ -257,7 +267,9 @@ export type Command =
   | CookiesClearCommand
   | StorageGetCommand
   | StorageSetCommand
-  | StorageClearCommand;
+  | StorageClearCommand
+  | StateSaveCommand
+  | StateLoadCommand;
 
 // Response types
 export interface SuccessResponse<T = unknown> {

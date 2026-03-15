@@ -113,6 +113,7 @@ export class BrowserManager {
 
       this.context = await this.browser.newContext({
         viewport,
+        ...(options.storageState ? { storageState: options.storageState } : {}),
       });
 
       this.page = this.context.pages()[0] ?? (await this.context.newPage());

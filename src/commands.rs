@@ -236,3 +236,20 @@ pub fn storage_clear(storage_type: &str) -> Value {
         "type": storage_type,
     })
 }
+
+/// Save browser state (cookies + localStorage) to a JSON file.
+pub fn state_save(path: &str) -> Value {
+    json!({
+        "id": gen_id(),
+        "action": "state_save",
+        "path": path,
+    })
+}
+
+/// Attempt to load browser state at runtime (returns informational error).
+pub fn state_load() -> Value {
+    json!({
+        "id": gen_id(),
+        "action": "state_load",
+    })
+}

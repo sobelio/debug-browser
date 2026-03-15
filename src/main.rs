@@ -26,6 +26,10 @@ struct Cli {
     /// Connect to an existing Chrome instance via CDP (port number or ws:// URL)
     #[arg(long, global = true)]
     connect: Option<String>,
+
+    /// Load browser state (cookies + localStorage) from a JSON file at launch
+    #[arg(long, global = true)]
+    state: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -101,8 +105,24 @@ enum Commands {
         #[command(subcommand)]
         action: Option<CookiesAction>,
     },
+    /// Save or load browser state (cookies + localStorage)
+    State {
+        #[command(subcommand)]
+        action: StateAction,
+    },
     /// Close the browser and shut down the daemon
     Close,
+}
+
+#[derive(Subcommand)]
+enum StateAction {
+    /// Save browser state (cookies + localStorage) to a JSON file
+    Save {
+        /// Path to save state JSON file
+        path: String,
+    },
+    /// Load browser state — must use --state flag at launch instead
+    Load,
 }
 
 #[derive(Subcommand)]
@@ -248,6 +268,10 @@ fn build_command(command: &Commands) -> serde_json::Value {
             ),
             Some(CookiesAction::Clear) => commands::cookies_clear(),
             None => commands::cookies_get(&[]),
+        },
+        Commands::State { action } => match action {
+            StateAction::Save { path } => commands::state_save(path),
+            StateAction::Load => commands::state_load(),
         },
         Commands::Eval { expression } => commands::evaluate(expression),
         Commands::React { action } => match action {
@@ -631,44 +655,67 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    // If --connect is set, send a launch command with CDP connection info first
-    if let Some(ref connect_value) = cli.connect {
-        let launch_cmd = if connect_value.starts_with("ws://")
-            || connect_value.starts_with("wss://")
-            || connect_value.starts_with("http://")
-            || connect_value.starts_with("https://")
-        {
-            serde_json::json!({
-                "id": "connect",
-                "action": "launch",
-                "cdpUrl": connect_value,
-            })
-        } else {
-            // Treat as port number
-            match connect_value.parse::<u16>() {
-                Ok(port) if port > 0 => serde_json::json!({
-                    "id": "connect",
+    // Validate --state file exists
+    if let Some(ref state_path) = cli.state {
+        if !std::path::Path::new(state_path).exists() {
+            let msg = format!("State file not found: {}", state_path);
+            match cli.format {
+                OutputFormat::Json => println!(r#"{{"success":false,"error":"{}"}}"#, msg),
+                OutputFormat::Text => eprintln!("Error: {}", msg),
+            }
+            std::process::exit(1);
+        }
+    }
+
+    // If --connect or --state is set, send a launch command with the appropriate options first
+    if cli.connect.is_some() || cli.state.is_some() {
+        let mut launch_cmd = if let Some(ref connect_value) = cli.connect {
+            if connect_value.starts_with("ws://")
+                || connect_value.starts_with("wss://")
+                || connect_value.starts_with("http://")
+                || connect_value.starts_with("https://")
+            {
+                serde_json::json!({
+                    "id": "launch",
                     "action": "launch",
-                    "cdpPort": port,
-                }),
-                _ => {
-                    let msg = format!(
-                        "Invalid --connect value: '{}' — expected a port number or ws:// URL",
-                        connect_value
-                    );
-                    match cli.format {
-                        OutputFormat::Json => println!(r#"{{"success":false,"error":"{}"}}"#, msg),
-                        OutputFormat::Text => eprintln!("Error: {}", msg),
+                    "cdpUrl": connect_value,
+                })
+            } else {
+                // Treat as port number
+                match connect_value.parse::<u16>() {
+                    Ok(port) if port > 0 => serde_json::json!({
+                        "id": "launch",
+                        "action": "launch",
+                        "cdpPort": port,
+                    }),
+                    _ => {
+                        let msg = format!(
+                            "Invalid --connect value: '{}' — expected a port number or ws:// URL",
+                            connect_value
+                        );
+                        match cli.format {
+                            OutputFormat::Json => println!(r#"{{"success":false,"error":"{}"}}"#, msg),
+                            OutputFormat::Text => eprintln!("Error: {}", msg),
+                        }
+                        std::process::exit(1);
                     }
-                    std::process::exit(1);
                 }
             }
+        } else {
+            serde_json::json!({
+                "id": "launch",
+                "action": "launch",
+            })
         };
 
+        if let Some(ref state_path) = cli.state {
+            launch_cmd["storageState"] = serde_json::json!(state_path);
+        }
+
         match send_command(launch_cmd, &cli.session) {
-            Ok(resp) if resp.success => { /* CDP connection succeeded */ }
+            Ok(resp) if resp.success => { /* launch succeeded */ }
             Ok(resp) => {
-                let err = resp.error.unwrap_or_else(|| "CDP connection failed".to_string());
+                let err = resp.error.unwrap_or_else(|| "Launch failed".to_string());
                 match cli.format {
                     OutputFormat::Json => println!(r#"{{"success":false,"error":"{}"}}"#, err),
                     OutputFormat::Text => eprintln!("Error: {}", err),

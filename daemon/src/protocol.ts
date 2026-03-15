@@ -21,6 +21,7 @@ const launchSchema = baseCommandSchema.extend({
   args: z.array(z.string()).optional(),
   cdpUrl: z.string().optional(),
   cdpPort: z.number().positive().optional(),
+  storageState: z.string().optional(),
 });
 
 const navigateSchema = baseCommandSchema.extend({
@@ -230,6 +231,15 @@ const storageClearSchema = baseCommandSchema.extend({
   type: z.enum(['local', 'session']),
 });
 
+const stateSaveSchema = baseCommandSchema.extend({
+  action: z.literal('state_save'),
+  path: z.string().min(1),
+});
+
+const stateLoadSchema = baseCommandSchema.extend({
+  action: z.literal('state_load'),
+});
+
 // Union schema for all commands
 const commandSchema = z.discriminatedUnion('action', [
   launchSchema,
@@ -268,6 +278,8 @@ const commandSchema = z.discriminatedUnion('action', [
   storageGetSchema,
   storageSetSchema,
   storageClearSchema,
+  stateSaveSchema,
+  stateLoadSchema,
 ]);
 
 // Parse result type

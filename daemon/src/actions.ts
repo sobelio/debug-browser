@@ -32,6 +32,7 @@ import type {
   StorageGetCommand,
   StorageSetCommand,
   StorageClearCommand,
+  StateSaveCommand,
   NavigateData,
   ScreenshotData,
   EvaluateData,
@@ -129,6 +130,10 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         return await handleStorageSet(command, browser);
       case 'storage_clear':
         return await handleStorageClear(command, browser);
+      case 'state_save':
+        return await handleStateSave(command, browser);
+      case 'state_load':
+        return handleStateLoad(command);
       default: {
         const unknownCommand = command as { id: string; action: string };
         return errorResponse(unknownCommand.id, `Unknown action: ${unknownCommand.action}`);
@@ -621,4 +626,22 @@ async function handleStorageClear(
 
   await page.evaluate(`${storageType}.clear()`);
   return successResponse(command.id, { cleared: true });
+}
+
+async function handleStateSave(
+  command: StateSaveCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.context().storageState({ path: command.path });
+  return successResponse(command.id, { saved: command.path });
+}
+
+function handleStateLoad(
+  command: Command & { action: 'state_load' }
+): Response {
+  return errorResponse(
+    command.id,
+    'Storage state must be loaded at launch. Use: debug-browser --state <path> navigate <url>'
+  );
 }
