@@ -167,32 +167,52 @@
     return null;
   }
 
+  // --- Known React hook names (for identifying custom hooks in _debugHookTypes) ---
+  var KNOWN_HOOK_NAMES = {
+    'useState': true, 'useReducer': true, 'useEffect': true,
+    'useLayoutEffect': true, 'useInsertionEffect': true, 'useRef': true,
+    'useMemo': true, 'useCallback': true, 'useContext': true,
+    'useDebugValue': true, 'useTransition': true, 'useDeferredValue': true,
+    'useId': true, 'useSyncExternalStore': true, 'useImperativeHandle': true
+  };
+
+  // --- Map _debugHookTypes names to our internal type strings ---
+  var DEBUG_TYPE_MAP = {
+    'useState': 'state',
+    'useReducer': 'reducer',
+    'useEffect': 'effect',
+    'useLayoutEffect': 'layout-effect',
+    'useInsertionEffect': 'insertion-effect',
+    'useRef': 'ref',
+    'useMemo': 'memo',
+    'useCallback': 'callback',
+    'useContext': 'context',
+    'useDebugValue': 'debug-value',
+    'useTransition': 'transition',
+    'useDeferredValue': 'deferred-value',
+    'useId': 'id',
+    'useSyncExternalStore': 'sync-external-store',
+    'useImperativeHandle': 'imperative-handle'
+  };
+
   // --- Identify hook type from _debugHookTypes or structural heuristics ---
   function classifyHook(hookNode, index, debugHookTypes) {
     // Use _debugHookTypes if available (React 18.3+)
     if (debugHookTypes && index < debugHookTypes.length) {
       var debugType = debugHookTypes[index];
-      // Map React's debug hook type names to our types
-      if (debugType === 'useState') return 'state';
-      if (debugType === 'useReducer') return 'reducer';
-      if (debugType === 'useEffect') return 'effect';
-      if (debugType === 'useLayoutEffect') return 'layout-effect';
-      if (debugType === 'useInsertionEffect') return 'insertion-effect';
-      if (debugType === 'useRef') return 'ref';
-      if (debugType === 'useMemo') return 'memo';
-      if (debugType === 'useCallback') return 'callback';
-      if (debugType === 'useContext') return 'context';
-      if (debugType === 'useDebugValue') return 'debug-value';
-      if (debugType === 'useTransition') return 'transition';
-      if (debugType === 'useDeferredValue') return 'deferred-value';
-      if (debugType === 'useId') return 'id';
-      if (debugType === 'useSyncExternalStore') return 'sync-external-store';
-      // Fallback for unknown debug types
+      if (DEBUG_TYPE_MAP[debugType]) return DEBUG_TYPE_MAP[debugType];
+      // Unknown hook name — likely a custom hook boundary marker
+      // Return the raw name so it can be used as a label
       return debugType.replace(/^use/, '').toLowerCase() || 'unknown';
     }
 
     // Structural heuristics fallback
     var ms = hookNode.memoizedState;
+
+    // useId: memoizedState is a string matching the :rN: pattern
+    if (typeof ms === 'string' && /^:r[0-9a-z]+:$/.test(ms)) {
+      return 'id';
+    }
 
     // useState/useReducer: has a queue
     if (hookNode.queue !== null && hookNode.queue !== undefined) {
@@ -234,7 +254,6 @@
 
     // useContext: no queue, not an effect, not a ref, not memo/callback
     if (hookNode.queue === null && ms !== null && ms !== undefined) {
-      // Skip undefined context values
       if (ms !== undefined) {
         return 'context';
       }
@@ -294,6 +313,36 @@
         result.value = safeSerialize(ms, 0, maxSerializeDepth, null);
         break;
 
+      case 'id':
+        result.value = safeSerialize(ms, 0, maxSerializeDepth, null);
+        break;
+
+      case 'transition':
+        // useTransition stores [isPending, startTransition]
+        if (typeof ms === 'boolean') {
+          result.value = ms; // isPending
+        } else {
+          result.value = safeSerialize(ms, 0, maxSerializeDepth, null);
+        }
+        break;
+
+      case 'deferred-value':
+        result.value = safeSerialize(ms, 0, maxSerializeDepth, null);
+        break;
+
+      case 'sync-external-store':
+        result.value = safeSerialize(ms, 0, maxSerializeDepth, null);
+        break;
+
+      case 'imperative-handle':
+        result.value = safeSerialize(ms, 0, maxSerializeDepth, null);
+        break;
+
+      case 'debug-value':
+        // useDebugValue: the memoizedState is the debug label value itself
+        result.value = safeSerialize(ms, 0, maxSerializeDepth, null);
+        break;
+
       default:
         result.value = safeSerialize(ms, 0, maxSerializeDepth, null);
         break;
@@ -346,16 +395,45 @@
     var hookType = classifyHook(hookNode, hookIndex, debugHookTypes);
     var hookData = extractHookData(hookNode, hookType);
     hookData.index = hookIndex;
+
+    // useDebugValue handling: attach debugLabel to the preceding hook
+    // useDebugValue is a label-only hook — its memoizedState is the label value
+    if (hookType === 'debug-value' && hooks.length > 0) {
+      var prevHook = hooks[hooks.length - 1];
+      prevHook.debugLabel = safeSerialize(hookNode.memoizedState, 0, maxSerializeDepth, null);
+      // Still record the debug-value hook but mark it as consumed
+      hookData.consumed = true;
+    }
+
+    // Custom hook grouping via _debugHookTypes
+    // If debugHookTypes has a name that isn't a known React hook, it indicates
+    // a custom hook boundary. Tag the hook entry with the custom hook name.
+    if (debugHookTypes && hookIndex < debugHookTypes.length) {
+      var rawName = debugHookTypes[hookIndex];
+      if (!KNOWN_HOOK_NAMES[rawName] && hookType !== 'debug-value') {
+        hookData.customHook = rawName;
+      }
+    }
+
     hooks.push(hookData);
 
     hookNode = hookNode.next;
     hookIndex++;
   }
 
+  // Post-process: filter out consumed debug-value hooks and adjust indices
+  var filteredHooks = [];
+  for (var h = 0; h < hooks.length; h++) {
+    if (hooks[h].type === 'debug-value' && hooks[h].consumed) {
+      continue; // Skip consumed useDebugValue entries
+    }
+    filteredHooks.push(hooks[h]);
+  }
+
   return {
     component: resolvedName,
     type: resolvedType,
-    hookCount: hooks.length,
-    hooks: hooks,
+    hookCount: filteredHooks.length,
+    hooks: filteredHooks,
   };
 })
