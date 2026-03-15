@@ -30,7 +30,7 @@ None
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Cargo project init, workspace structure, core dependencies (clap, tokio, serde)
+- [x] 01-01: Cargo project init, workspace structure, core dependencies (clap, tokio, serde)
 - [ ] 01-02: CLI entry point with subcommand skeleton, basic config/error handling
 
 ### Phase 2: CDP Connection
@@ -141,7 +141,7 @@ Note: Phases 3-4 (navigation/DOM) and Phase 5 (console inbox) can potentially ru
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Project Scaffolding | 0/2 | Not started | - |
+| 1. Project Scaffolding | 1/2 | In progress | - |
 | 2. CDP Connection | 0/3 | Not started | - |
 | 3. Browser Navigation | 0/2 | Not started | - |
 | 4. DOM Interaction | 0/3 | Not started | - |
