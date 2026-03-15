@@ -202,12 +202,28 @@ async function handleSnapshot(
   command: Command & { action: 'snapshot' },
   browser: BrowserManager
 ): Promise<Response> {
-  // Basic accessibility snapshot - no agent-browser RefMap system
+  // Basic DOM snapshot via aria - no agent-browser RefMap system
   const page = browser.getPage();
-  const snapshot = await page.accessibility.snapshot();
-  return successResponse(command.id, {
-    snapshot: snapshot ? JSON.stringify(snapshot, null, 2) : 'Empty page',
+  const snapshot = await page.evaluate(() => {
+    const walk = (el: Element, depth: number): string => {
+      const indent = '  '.repeat(depth);
+      const role = el.getAttribute('role') || el.tagName.toLowerCase();
+      const name = el.getAttribute('aria-label') || el.getAttribute('title') || '';
+      const text = el.childNodes.length === 1 && el.childNodes[0].nodeType === 3
+        ? (el.childNodes[0].textContent || '').trim().slice(0, 80)
+        : '';
+      let line = `${indent}${role}`;
+      if (name) line += ` "${name}"`;
+      if (text) line += ` "${text}"`;
+      const children = Array.from(el.children).map(c => walk(c, depth + 1)).filter(Boolean);
+      if (children.length > 0) {
+        return line + '\n' + children.join('\n');
+      }
+      return line;
+    };
+    return document.body ? walk(document.body, 0) : 'Empty page';
   });
+  return successResponse(command.id, { snapshot });
 }
 
 async function handleEvaluate(

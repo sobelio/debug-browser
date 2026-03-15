@@ -2,3 +2,7 @@
 *.swp
 *.swo
 .DS_Store
+
+# Node.js daemon
+daemon/dist/
+daemon/node_modules/
