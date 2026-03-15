@@ -10,7 +10,7 @@ None
 
 ## Phases
 
-- [ ] **Phase 1: Project Scaffolding** — Rust project setup, dependencies, CLI framework
+- [x] **Phase 1: Project Scaffolding** — Rust project setup, dependencies, CLI framework
 - [ ] **Phase 2: CDP Connection** — Chrome DevTools Protocol client, browser launch/attach
 - [ ] **Phase 3: Browser Navigation** — Page navigation, waiting strategies, page lifecycle
 - [ ] **Phase 4: DOM Interaction** — Click, type, scroll, element selection, text extraction
@@ -31,7 +31,7 @@ None
 
 Plans:
 - [x] 01-01: Cargo project init, workspace structure, core dependencies (clap, tokio, serde)
-- [ ] 01-02: CLI entry point with subcommand skeleton, basic config/error handling
+- [x] 01-02: CLI entry point with subcommand skeleton, basic config/error handling
 
 ### Phase 2: CDP Connection
 **Goal**: Connect to Chrome/Chromium via CDP, launch headless browser, establish debugging session
@@ -141,7 +141,7 @@ Note: Phases 3-4 (navigation/DOM) and Phase 5 (console inbox) can potentially ru
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Project Scaffolding | 1/2 | In progress | - |
+| 1. Project Scaffolding | 2/2 | Complete | 2026-03-15 |
 | 2. CDP Connection | 0/3 | Not started | - |
 | 3. Browser Navigation | 0/2 | Not started | - |
 | 4. DOM Interaction | 0/3 | Not started | - |
