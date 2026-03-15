@@ -197,6 +197,11 @@ const setStateSchema = baseCommandSchema.extend({
   value: z.unknown(),
 });
 
+const sourceSchema = baseCommandSchema.extend({
+  action: z.literal('source'),
+  component: z.string().min(1),
+});
+
 const cookiesGetSchema = baseCommandSchema.extend({
   action: z.literal('cookies_get'),
   urls: z.array(z.string()).optional(),
@@ -283,6 +288,7 @@ const commandSchema = z.discriminatedUnion('action', [
   componentsSchema,
   hooksSchema,
   setStateSchema,
+  sourceSchema,
   cookiesGetSchema,
   cookiesSetSchema,
   cookiesClearSchema,

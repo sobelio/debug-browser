@@ -28,6 +28,7 @@ import type {
   ComponentsCommand,
   HooksCommand,
   SetStateCommand,
+  SourceCommand,
   CookiesGetCommand,
   CookiesSetCommand,
   StorageGetCommand,
@@ -56,6 +57,12 @@ const HOOKS_SCRIPT = readFileSync(
 /** Cached set-state script content, loaded once at module init. */
 const SET_STATE_SCRIPT = readFileSync(
   fileURLToPath(new URL('./scripts/set-state.js', import.meta.url)),
+  'utf-8'
+);
+
+/** Cached source location script content, loaded once at module init. */
+const SOURCE_SCRIPT = readFileSync(
+  fileURLToPath(new URL('./scripts/get-source.js', import.meta.url)),
   'utf-8'
 );
 
@@ -127,6 +134,8 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         return await handleHooks(command, browser);
       case 'set-state':
         return await handleSetState(command, browser);
+      case 'source':
+        return await handleSource(command, browser);
       case 'cookies_get':
         return await handleCookiesGet(command, browser);
       case 'cookies_set':
@@ -564,6 +573,23 @@ async function handleSetState(
 
   const result = await page.evaluate(
     `(${SET_STATE_SCRIPT})(${JSON.stringify(options)})`
+  );
+
+  return successResponse(command.id, result);
+}
+
+async function handleSource(
+  command: SourceCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+
+  const options = {
+    component: command.component,
+  };
+
+  const result = await page.evaluate(
+    `(${SOURCE_SCRIPT})(${JSON.stringify(options)})`
   );
 
   return successResponse(command.id, result);

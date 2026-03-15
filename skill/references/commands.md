@@ -9,6 +9,7 @@
 | `components` | List React component tree | `--depth`, `--component`, `--no-props`, `--no-state`, `--compact` |
 | `hooks <component>` | Inspect hooks for a named component | `--depth`, `--compact` |
 | `set-state <component> <index> <value>` | Set a useState/useReducer hook's value | |
+| `source <component>` | Look up source file location for a component | |
 | `console logs` | Show collected console.log messages | |
 | `console errors` | Show collected errors and exceptions | |
 | `console clear` | Clear the console inbox | |
@@ -163,6 +164,7 @@ debug-browser components --compact
 - On pages without React, returns "No React components detected" (text) or an object with `componentCount: 0` (JSON).
 - The `--component` filter preserves ancestor components in the tree, showing the full path from root to each matched component.
 - Combine `--no-props --no-state` first to get a structural overview, then drill into specific components.
+- Source file locations (`file:line`) are shown for each component when available (development builds).
 
 ---
 
@@ -215,6 +217,7 @@ debug-browser hooks Counter --compact
 - For class components, returns `classState` instead of hooks array.
 - Each hook has a stable index (`[0]`, `[1]`, etc.) for tracking values across repeated inspections.
 - If multiple components match the name, the first match is inspected.
+- Source file location (`file:line`) is shown in the header when available (development builds).
 
 ---
 
@@ -272,6 +275,47 @@ debug-browser set-state Form 0 null
 - The state update triggers a normal React re-render — effects, derived state, and child components update accordingly.
 - Uses React DevTools' `overrideHookState` API when available, with a fallback to the hook's dispatch function.
 - Use `hooks <component>` first to identify the correct hook index.
+
+---
+
+## source
+
+**Syntax:**
+
+```
+debug-browser source <component>
+```
+
+**Purpose:** Look up the source file and line number where a React component is defined. Enables going directly from component inspection to editing the source file.
+
+**Arguments:**
+
+| Argument | Type | Required | Description |
+|----------|------|----------|-------------|
+| `component` | `string` | yes | Component name (same substring match as `hooks`). |
+
+**Output:**
+
+- **text:** One line per unique match. Example:
+  ```
+  LoginPage -> src/pages/LoginPage.tsx:15
+  Card -> src/components/ui/card.tsx:8
+  ```
+- **json:** `{ "success": true, "data": { "matches": [{ "component": "LoginPage", "source": { "fileName": "src/pages/LoginPage.tsx", "lineNumber": 15 } }] } }`
+
+**Example:**
+
+```bash
+debug-browser source LoginPage
+debug-browser source Card
+debug-browser source Button --format json
+```
+
+**Notes:**
+- Source locations are also shown inline in `components` and `hooks` output — this command is for quick lookups without the full tree.
+- Depends on React's `_debugSource` fiber property, which is set by the Babel/SWC React transform in development mode.
+- Production builds strip `_debugSource`, so this returns "(no source info)" for production bundles.
+- If multiple components match the name, all unique source locations are listed (deduplicated by name + file + line).
 
 ---
 

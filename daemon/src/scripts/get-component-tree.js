@@ -240,6 +240,22 @@
     return 'function';
   }
 
+  function getSourceLocation(fiber) {
+    // _debugSource is set by the React Babel/SWC transform in development mode
+    var source = fiber._debugSource;
+    if (source && source.fileName) {
+      var loc = { fileName: source.fileName };
+      if (typeof source.lineNumber === 'number') {
+        loc.lineNumber = source.lineNumber;
+      }
+      if (typeof source.columnNumber === 'number') {
+        loc.columnNumber = source.columnNumber;
+      }
+      return loc;
+    }
+    return null;
+  }
+
   function isUserComponent(fiber) {
     // Always include function/class components
     if (fiber.tag === FunctionComponent || fiber.tag === ClassComponent) return true;
@@ -270,6 +286,12 @@
           depth: depth,
           children: [],
         };
+
+        // Extract source location if available
+        var source = getSourceLocation(current);
+        if (source) {
+          node.source = source;
+        }
 
         // Extract props if requested
         if (includeProps) {

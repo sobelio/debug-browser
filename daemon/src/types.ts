@@ -189,6 +189,11 @@ export interface SetStateCommand extends BaseCommand {
   value: unknown;
 }
 
+export interface SourceCommand extends BaseCommand {
+  action: 'source';
+  component: string;
+}
+
 export interface CookiesGetCommand extends BaseCommand {
   action: 'cookies_get';
   urls?: string[];
@@ -273,6 +278,7 @@ export type Command =
   | ComponentsCommand
   | HooksCommand
   | SetStateCommand
+  | SourceCommand
   | CookiesGetCommand
   | CookiesSetCommand
   | CookiesClearCommand

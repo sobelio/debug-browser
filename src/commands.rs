@@ -146,6 +146,15 @@ pub fn set_state(component: &str, hook_index: u32, value: Value) -> Value {
     })
 }
 
+/// Look up the source file location for a React component.
+pub fn source(component: &str) -> Value {
+    json!({
+        "id": gen_id(),
+        "action": "source",
+        "component": component,
+    })
+}
+
 /// Detect whether React is present on the current page.
 pub fn react_detect() -> Value {
     json!({

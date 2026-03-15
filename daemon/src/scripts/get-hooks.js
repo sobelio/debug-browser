@@ -371,6 +371,18 @@
   var resolvedName = getComponentName(targetFiber) || 'Anonymous';
   var resolvedType = getComponentType(targetFiber);
 
+  // Extract source location if available
+  var resolvedSource = null;
+  if (targetFiber._debugSource && targetFiber._debugSource.fileName) {
+    resolvedSource = { fileName: targetFiber._debugSource.fileName };
+    if (typeof targetFiber._debugSource.lineNumber === 'number') {
+      resolvedSource.lineNumber = targetFiber._debugSource.lineNumber;
+    }
+    if (typeof targetFiber._debugSource.columnNumber === 'number') {
+      resolvedSource.columnNumber = targetFiber._debugSource.columnNumber;
+    }
+  }
+
   // Get _debugHookTypes if available
   var debugHookTypes = targetFiber._debugHookTypes || null;
 
@@ -382,13 +394,15 @@
 
   // Class components don't have hook linked lists
   if (targetFiber.tag === ClassComponent) {
-    return {
+    var classResult = {
       component: resolvedName,
       type: resolvedType,
       hookCount: 0,
       hooks: [],
       classState: safeSerialize(targetFiber.memoizedState, 0, maxSerializeDepth, null),
     };
+    if (resolvedSource) classResult.source = resolvedSource;
+    return classResult;
   }
 
   while (hookNode && hookIndex < maxHooks) {
@@ -430,10 +444,12 @@
     filteredHooks.push(hooks[h]);
   }
 
-  return {
+  var result = {
     component: resolvedName,
     type: resolvedType,
     hookCount: filteredHooks.length,
     hooks: filteredHooks,
   };
+  if (resolvedSource) result.source = resolvedSource;
+  return result;
 })

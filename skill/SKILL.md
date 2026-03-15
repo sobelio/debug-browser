@@ -4,8 +4,9 @@ description: >
   Debug React applications via headless browser with rich introspection.
   Trigger when the user asks to: debug React app, inspect React components,
   check component state, view hook values, set React state, modify hook state,
-  capture console errors, debug React rendering, inspect fiber tree,
-  examine React props, trace React re-renders, or diagnose React application issues.
+  find component source, locate component file, capture console errors,
+  debug React rendering, inspect fiber tree, examine React props,
+  trace React re-renders, or diagnose React application issues.
 ---
 
 # debug-browser
@@ -152,6 +153,27 @@ debug-browser console errors
 ```
 
 Only `useState` and `useReducer` hooks can be set. Attempting to set an effect, ref, or memo hook returns an error. The state update triggers a normal React re-render, so all derived state, effects, and child components update as expected.
+
+### Locate Component Source Files
+
+Source file locations appear automatically in `components` and `hooks` output when the app is running in development mode (Vite, webpack dev, Next.js dev, etc.):
+
+```
+LoginPage (function) src/pages/LoginPage.tsx:15
+```
+
+```
+Hooks for LoginPage (function, src/pages/LoginPage.tsx:15, 5 hooks):
+```
+
+Use the dedicated `source` command for a quick lookup without the full tree or hook details:
+
+```bash
+debug-browser source LoginPage
+# LoginPage -> src/pages/LoginPage.tsx:15
+```
+
+This maps directly to `file:line` format — use it to jump from inspection to editing the right file. Source info depends on React's `_debugSource` transform, which is included in development builds but stripped in production.
 
 ### Check Console Output
 
