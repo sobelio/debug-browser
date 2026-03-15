@@ -51,10 +51,11 @@ Plans:
 **Depends on**: Phase 8
 **Research**: Likely (Nix + Playwright + Node.js daemon packaging)
 **Research topics**: Nix Rust builds (crane/naersk), bundling Node.js daemon + node_modules in Nix, Playwright browser binary paths in Nix, flake structure for mixed Rust+Node projects
-**Plans**: TBD
+**Plans**: 2
 
 Plans:
-- [ ] 09-01: TBD (run /gsd:plan-phase 9 to break down)
+- [ ] 09-01: Create flake.nix with crane + buildNpmPackage + makeWrapper
+- [ ] 09-02: Dev shell + Nix install documentation
 
 #### Phase 10: Repo & Release
 **Goal**: Create sobelio/debug-browser public repo, clean README with install/usage instructions, push code, tag v1.1 release
