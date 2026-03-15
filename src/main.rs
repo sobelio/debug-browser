@@ -55,6 +55,18 @@ enum Commands {
         /// Include host elements (div, span, etc.) in output
         #[arg(long)]
         include_host: bool,
+        /// Hide props from output
+        #[arg(long)]
+        no_props: bool,
+        /// Hide state from output
+        #[arg(long)]
+        no_state: bool,
+        /// Max serialization depth for props/state (default: 3)
+        #[arg(long)]
+        props_depth: Option<u32>,
+        /// Filter to components matching this name (substring match)
+        #[arg(long)]
+        component: Option<String>,
     },
     /// Inspect hooks for a React component
     Hooks {
@@ -102,7 +114,14 @@ fn build_command(command: &Commands) -> serde_json::Value {
         Commands::Navigate { url } => commands::navigate(url),
         Commands::Click { selector } => commands::click(selector),
         Commands::Type { selector, text } => commands::type_text(selector, text),
-        Commands::Components { depth, include_host } => commands::components(*depth, *include_host),
+        Commands::Components {
+            depth,
+            include_host,
+            no_props,
+            no_state,
+            props_depth,
+            ..
+        } => commands::components(*depth, *include_host, !no_props, !no_state, *props_depth),
         Commands::Hooks { component } => commands::hooks(component),
         Commands::Console { action } => match action {
             ConsoleAction::Logs => commands::console_logs(),
@@ -150,11 +169,50 @@ fn print_response(resp: &Response, format: &OutputFormat) {
     }
 }
 
+/// Compact-format a JSON value for inline display. Truncate if too long.
+fn compact_json(value: &serde_json::Value) -> String {
+    let s = serde_json::to_string(value).unwrap_or_else(|_| value.to_string());
+    if s.len() > 120 {
+        format!("{}...", &s[..120])
+    } else {
+        s
+    }
+}
+
 /// Format a component tree node recursively with indentation.
-fn format_tree_node(node: &serde_json::Value, indent: usize, output: &mut String) {
+/// `filter` is an optional substring to match component names against.
+/// Returns true if this node or any descendant matched the filter.
+fn format_tree_node(
+    node: &serde_json::Value,
+    indent: usize,
+    output: &mut String,
+    filter: Option<&str>,
+) -> bool {
     let name = node.get("name").and_then(|v| v.as_str()).unwrap_or("?");
     let comp_type = node.get("type").and_then(|v| v.as_str()).unwrap_or("?");
     let key = node.get("key").and_then(|v| v.as_str());
+
+    // Check children first to determine if any descendant matches
+    let children = node.get("children").and_then(|v| v.as_array());
+    let mut child_output = String::new();
+    let mut child_matched = false;
+    if let Some(children) = children {
+        for child in children {
+            if format_tree_node(child, indent + 1, &mut child_output, filter) {
+                child_matched = true;
+            }
+        }
+    }
+
+    // Determine if this node matches the filter
+    let self_matches = match filter {
+        Some(f) => name.to_lowercase().contains(&f.to_lowercase()),
+        None => true,
+    };
+
+    if !self_matches && !child_matched {
+        return false;
+    }
 
     let prefix = "  ".repeat(indent);
     output.push_str(&prefix);
@@ -169,15 +227,32 @@ fn format_tree_node(node: &serde_json::Value, indent: usize, output: &mut String
     }
     output.push('\n');
 
-    if let Some(children) = node.get("children").and_then(|v| v.as_array()) {
-        for child in children {
-            format_tree_node(child, indent + 1, output);
+    // Show props if present
+    if let Some(props) = node.get("props") {
+        if props.is_object() {
+            let formatted = compact_json(props);
+            output.push_str(&prefix);
+            output.push_str("  props: ");
+            output.push_str(&formatted);
+            output.push('\n');
         }
     }
+
+    // Show state if present
+    if let Some(state) = node.get("state") {
+        let formatted = compact_json(state);
+        output.push_str(&prefix);
+        output.push_str("  state: ");
+        output.push_str(&formatted);
+        output.push('\n');
+    }
+
+    output.push_str(&child_output);
+    true
 }
 
 /// Print a component tree response in human-readable format.
-fn print_component_tree(resp: &Response) {
+fn print_component_tree(resp: &Response, filter: Option<&str>) {
     if let Some(ref data) = resp.data {
         // Check for error field (non-React pages)
         if let Some(err) = data.get("error").and_then(|v| v.as_str()) {
@@ -186,9 +261,13 @@ fn print_component_tree(resp: &Response) {
                 .and_then(|v| v.as_u64())
                 .unwrap_or(0);
             if count == 0 {
-                println!("{}", err);
+                println!(
+                    "No React components detected on this page. Make sure you navigate to a React application first."
+                );
                 return;
             }
+            // If there's an error but components exist, show the error as info
+            eprintln!("Warning: {}", err);
         }
 
         let roots = data.get("roots").and_then(|v| v.as_array());
@@ -199,22 +278,34 @@ fn print_component_tree(resp: &Response) {
 
         if let Some(roots) = roots {
             if roots.is_empty() {
-                println!("No React components found.");
+                println!(
+                    "No React components detected on this page. Make sure you navigate to a React application first."
+                );
                 return;
             }
 
             let mut output = String::new();
             for root in roots {
-                format_tree_node(root, 0, &mut output);
+                format_tree_node(root, 0, &mut output, filter);
             }
             // Remove trailing newline
             if output.ends_with('\n') {
                 output.pop();
             }
-            println!("{}", output);
-            println!("---\n{} component(s)", count);
+            if output.is_empty() {
+                if let Some(f) = filter {
+                    println!("No components matching \"{}\" found.", f);
+                } else {
+                    println!("No React components found.");
+                }
+            } else {
+                println!("{}", output);
+                println!("---\n{} component(s) total", count);
+            }
         } else {
-            println!("No React components found.");
+            println!(
+                "No React components detected on this page. Make sure you navigate to a React application first."
+            );
         }
     } else {
         println!("No data returned.");
@@ -307,8 +398,10 @@ fn main() -> Result<()> {
         Ok(resp) => {
             let success = resp.success;
             match &cli.command {
-                Commands::Components { .. } if resp.success && cli.format == OutputFormat::Text => {
-                    print_component_tree(&resp);
+                Commands::Components { component, .. }
+                    if resp.success && cli.format == OutputFormat::Text =>
+                {
+                    print_component_tree(&resp, component.as_deref());
                 }
                 _ => {
                     print_response(&resp, &cli.format);

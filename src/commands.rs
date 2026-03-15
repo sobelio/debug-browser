@@ -90,16 +90,27 @@ pub fn console_clear() -> Value {
 }
 
 /// List the React component tree.
-pub fn components(depth: Option<u32>, include_host: bool) -> Value {
+pub fn components(
+    depth: Option<u32>,
+    include_host: bool,
+    include_props: bool,
+    include_state: bool,
+    props_depth: Option<u32>,
+) -> Value {
     let mut cmd = json!({
         "id": gen_id(),
         "action": "components",
+        "includeProps": include_props,
+        "includeState": include_state,
     });
     if let Some(d) = depth {
         cmd["depth"] = json!(d);
     }
     if include_host {
         cmd["includeHost"] = json!(true);
+    }
+    if let Some(pd) = props_depth {
+        cmd["propsDepth"] = json!(pd);
     }
     cmd
 }
