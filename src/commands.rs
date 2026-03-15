@@ -68,7 +68,7 @@ pub fn evaluate(script: &str) -> Value {
 pub fn console_logs() -> Value {
     json!({
         "id": gen_id(),
-        "action": "console_logs",
+        "action": "console",
     })
 }
 
@@ -76,7 +76,7 @@ pub fn console_logs() -> Value {
 pub fn console_errors() -> Value {
     json!({
         "id": gen_id(),
-        "action": "console_errors",
+        "action": "errors",
     })
 }
 
@@ -84,7 +84,8 @@ pub fn console_errors() -> Value {
 pub fn console_clear() -> Value {
     json!({
         "id": gen_id(),
-        "action": "console_clear",
+        "action": "console",
+        "clear": true,
     })
 }
 
