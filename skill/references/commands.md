@@ -6,11 +6,17 @@
 |---------|---------|-----------|
 | `navigate <url>` | Open a URL in the browser | |
 | `react detect` | Check if React is present on the page | |
-| `components` | List React component tree | `--depth`, `--component`, `--no-props`, `--no-state` |
-| `hooks <component>` | Inspect hooks for a named component | `--depth` |
+| `components` | List React component tree | `--depth`, `--component`, `--no-props`, `--no-state`, `--compact` |
+| `hooks <component>` | Inspect hooks for a named component | `--depth`, `--compact` |
 | `console logs` | Show collected console.log messages | |
 | `console errors` | Show collected errors and exceptions | |
 | `console clear` | Clear the console inbox | |
+| `cookies get` | Get all browser cookies | |
+| `cookies set <name> <value>` | Set a cookie | `--domain`, `--path`, `--secure`, `--http-only`, `--same-site`, `--expires` |
+| `cookies clear` | Clear all cookies | |
+| `storage local [get\|set\|clear]` | Manage localStorage | |
+| `storage session [get\|set\|clear]` | Manage sessionStorage | |
+| `state save <path>` | Save browser state (cookies + storage) to JSON | |
 | `click <selector>` | Click an element by CSS selector | |
 | `type <selector> <text>` | Type text into an input element | |
 | `eval <expression>` | Evaluate JavaScript in page context | |
@@ -25,11 +31,15 @@ These flags apply to all commands. Place them before the subcommand.
 | `--format` | `text \| json` | `text` | Output format. Use `json` for structured, parseable output. |
 | `--session` | `string` | `"default"` | Session name for daemon multiplexing. Each session runs an independent browser. |
 | `--connect` | `string` | none | Attach to existing Chrome via CDP. Accepts a port number (e.g., `9222`) or a WebSocket URL (e.g., `ws://127.0.0.1:9222/devtools/browser/...`). |
+| `--state` | `string` | none | Load browser state (cookies + localStorage) from a JSON file at launch. Created via `state save`. |
+| `--profile` | `string` | none | Use a persistent browser profile directory. Persists cookies, cache, and storage between sessions. Cannot be combined with `--state`. |
 | `--verbose` / `-v` | `bool` | `false` | Enable verbose/debug logging. |
 
 ```bash
 debug-browser --format json --session myapp components
 debug-browser --connect 9222 navigate http://localhost:3000
+debug-browser --state ./saved-state.json navigate http://localhost:3000
+debug-browser --profile ./my-profile navigate http://localhost:3000
 ```
 
 ---
@@ -119,6 +129,7 @@ debug-browser components [flags]
 | `--no-props` | `bool` | `false` | Hide component props from output. |
 | `--no-state` | `bool` | `false` | Hide component state from output. |
 | `--props-depth` | `u32` | `3` | Maximum serialization depth for props and state values. |
+| `--compact` | `bool` | `false` | Compact output: names-only tree with count. Minimal token usage. |
 
 **Output:**
 
@@ -142,6 +153,9 @@ debug-browser components --include-host --depth 2
 
 # Deep prop serialization
 debug-browser components --component DataGrid --props-depth 5
+
+# Compact: names only, minimal output
+debug-browser components --compact
 ```
 
 **Notes:**
@@ -172,6 +186,7 @@ debug-browser hooks <component> [flags]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--depth` | `u32` | `3` | Maximum serialization depth for hook values. |
+| `--compact` | `bool` | `false` | Compact output: types-only list with count. Minimal token usage. |
 
 **Output:**
 
@@ -191,6 +206,7 @@ debug-browser hooks <component> [flags]
 debug-browser hooks TodoList
 debug-browser hooks App --depth 5
 debug-browser hooks DataGrid --format json
+debug-browser hooks Counter --compact
 ```
 
 **Notes:**
@@ -395,6 +411,126 @@ debug-browser eval "window.__STORE__.getState()"
 - The expression runs in the page's global scope.
 - Return values are serialized. Complex objects may be truncated.
 - Use `--format json` for structured return values.
+
+---
+
+## cookies
+
+**Syntax:**
+
+```
+debug-browser cookies [get|set|clear]
+```
+
+**Purpose:** Manage browser cookies for the current context.
+
+### cookies get
+
+```bash
+debug-browser cookies get [urls...]
+```
+
+Get all cookies, optionally filtered by URLs.
+
+### cookies set
+
+```bash
+debug-browser cookies set <name> <value> [flags]
+```
+
+Set a cookie with the given name and value.
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--domain` | `string` | Cookie domain |
+| `--path` | `string` | Cookie path |
+| `--http-only` | `bool` | Mark as HTTP-only |
+| `--secure` | `bool` | Mark as secure |
+| `--same-site` | `string` | SameSite attribute (Strict, Lax, None) |
+| `--expires` | `f64` | Expiration as Unix timestamp |
+
+### cookies clear
+
+```bash
+debug-browser cookies clear
+```
+
+Clear all cookies from the browser context.
+
+**Example:**
+
+```bash
+debug-browser cookies set session_id abc123
+debug-browser cookies get
+debug-browser cookies clear
+```
+
+---
+
+## storage
+
+**Syntax:**
+
+```
+debug-browser storage <local|session> [get|set|clear]
+```
+
+**Purpose:** Manage localStorage or sessionStorage.
+
+### storage local/session
+
+```bash
+# List all entries
+debug-browser storage local
+
+# Get a specific key
+debug-browser storage local get <key>
+
+# Set a key-value pair
+debug-browser storage local set <key> <value>
+
+# Clear all entries
+debug-browser storage local clear
+```
+
+Same syntax applies for `storage session`.
+
+**Example:**
+
+```bash
+debug-browser storage local set theme dark
+debug-browser storage local get theme
+debug-browser storage local
+debug-browser storage session clear
+```
+
+---
+
+## state save
+
+**Syntax:**
+
+```
+debug-browser state save <path>
+```
+
+**Purpose:** Save browser state (cookies + localStorage) to a JSON file. The saved file can be loaded at launch with the `--state` flag.
+
+**Arguments:**
+
+| Argument | Type | Required | Description |
+|----------|------|----------|-------------|
+| `path` | `string` | yes | Path to save the state JSON file. |
+
+**Example:**
+
+```bash
+# Save current state
+debug-browser state save ./my-state.json
+
+# Later, restore state at launch
+debug-browser --state ./my-state.json navigate http://localhost:3000
+```
 
 ---
 

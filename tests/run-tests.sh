@@ -345,6 +345,81 @@ test_close() {
   sleep 1
 }
 
+test_cookies() {
+  echo "=== Test: cookies ==="
+
+  # Set a cookie
+  "$CLI" cookies set test_cookie test_value > /dev/null 2>&1 || true
+
+  # Get cookies, verify it exists
+  local output
+  output=$("$CLI" cookies get 2>&1) || true
+  assert_contains "$output" "test_cookie" "cookies set and get works"
+
+  # Clear cookies
+  "$CLI" cookies clear > /dev/null 2>&1 || true
+  output=$("$CLI" cookies get 2>&1) || true
+  assert_not_contains "$output" "test_cookie" "cookies clear removes cookies"
+}
+
+test_storage() {
+  echo "=== Test: storage ==="
+
+  # Set localStorage value
+  "$CLI" storage local set mykey myvalue > /dev/null 2>&1 || true
+
+  # Get it back
+  local output
+  output=$("$CLI" storage local get mykey 2>&1) || true
+  assert_contains "$output" "myvalue" "storage local set and get works"
+
+  # Get all
+  output=$("$CLI" storage local 2>&1) || true
+  assert_contains "$output" "mykey" "storage local lists all keys"
+
+  # Clear
+  "$CLI" storage local clear > /dev/null 2>&1 || true
+  output=$("$CLI" storage local 2>&1) || true
+  assert_not_contains "$output" "mykey" "storage local clear works"
+}
+
+test_state() {
+  echo "=== Test: state save ==="
+
+  # Save state to temp file
+  local state_file="/tmp/debug-browser-test-state.json"
+  "$CLI" state save "$state_file" > /dev/null 2>&1 || true
+
+  # Verify file exists and is valid JSON
+  TESTS=$((TESTS + 1))
+  if [ -f "$state_file" ] && python3 -c "import json; json.load(open('$state_file'))" 2>/dev/null; then
+    PASSED=$((PASSED + 1))
+    echo "  PASS state save creates valid JSON"
+  else
+    FAILED=$((FAILED + 1))
+    echo "  FAIL state save creates valid JSON"
+  fi
+  rm -f "$state_file"
+}
+
+test_compact() {
+  echo "=== Test: compact output ==="
+
+  # Components compact — should NOT contain props/state
+  local output
+  output=$("$CLI" components --compact 2>&1) || true
+  assert_contains "$output" "Counter" "compact components shows Counter"
+  assert_not_contains "$output" "props:" "compact components hides props"
+  assert_not_contains "$output" "state:" "compact components hides state"
+  assert_contains "$output" "components" "compact components shows count"
+
+  # Hooks compact — should show types only
+  output=$("$CLI" hooks Counter --compact 2>&1) || true
+  assert_contains "$output" "useState" "compact hooks shows hook types"
+  assert_not_contains "$output" "[0]" "compact hooks hides indices"
+  assert_contains "$output" "hooks" "compact hooks shows hook count"
+}
+
 # --- Run tests ---
 
 echo "=== Running E2E Tests ==="
@@ -359,5 +434,9 @@ test_type
 test_eval
 test_console
 test_json_output
+test_cookies
+test_storage
+test_state
+test_compact
 test_session
 test_close
