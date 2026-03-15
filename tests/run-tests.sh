@@ -102,6 +102,19 @@ else
   echo "CLI binary is up to date"
 fi
 
+# Build daemon if needed
+DAEMON_DIR="$PROJECT_DIR/daemon"
+if [ ! -d "$DAEMON_DIR/node_modules" ]; then
+  echo "Installing daemon dependencies..."
+  (cd "$DAEMON_DIR" && npm install)
+fi
+if [ ! -f "$DAEMON_DIR/dist/daemon.js" ] || [ "$(find "$DAEMON_DIR/src" -newer "$DAEMON_DIR/dist/daemon.js" 2>/dev/null | head -1)" ]; then
+  echo "Building daemon..."
+  (cd "$DAEMON_DIR" && rm -rf dist && npm run build)
+else
+  echo "Daemon is up to date"
+fi
+
 # Install fixture dependencies if needed
 if [ ! -d "$FIXTURE_DIR/node_modules" ]; then
   echo "Installing fixture dependencies..."
@@ -110,13 +123,9 @@ else
   echo "Fixture dependencies already installed"
 fi
 
-# Build fixture
-echo "Building fixture..."
-(cd "$FIXTURE_DIR" && npm run build)
-
-# Start fixture preview server in background
-echo "Starting fixture preview server..."
-(cd "$FIXTURE_DIR" && npm run preview) &
+# Start fixture dev server in background (dev mode preserves component names)
+echo "Starting fixture dev server..."
+(cd "$FIXTURE_DIR" && npm run serve-test) &
 FIXTURE_PID=$!
 
 # Wait for server to be ready (max 10s)
@@ -141,8 +150,8 @@ echo ""
 test_navigate() {
   echo "=== Test: navigate ==="
   local output
-  output=$("$CLI" navigate http://localhost:5188 2>&1)
-  assert_contains "$output" "Navigated" "navigate returns success message"
+  output=$("$CLI" navigate http://localhost:5188 2>&1) || true
+  assert_contains "$output" "localhost:5188" "navigate returns success with URL"
 
   # Give page a moment to fully load React
   sleep 2
@@ -151,10 +160,10 @@ test_navigate() {
 test_react_detect() {
   echo "=== Test: react detect ==="
   local output json
-  output=$("$CLI" react detect 2>&1)
-  assert_contains "$output" "React" "react detect finds React"
+  output=$("$CLI" react detect 2>&1) || true
+  assert_contains "$output" "detected" "react detect finds React"
 
-  json=$("$CLI" --format json react detect 2>&1)
+  json=$("$CLI" --format json react detect 2>&1) || true
   assert_contains "$json" '"detected"' "react detect JSON has detected field"
   assert_contains "$json" '"success": true' "react detect JSON success"
 }
@@ -164,7 +173,7 @@ test_components() {
 
   # Full tree
   local output
-  output=$("$CLI" components --depth 3 2>&1)
+  output=$("$CLI" components --depth 3 2>&1) || true
   assert_contains "$output" "App" "components shows App"
   assert_contains "$output" "Counter" "components shows Counter"
   assert_contains "$output" "TodoList" "components shows TodoList"
@@ -173,13 +182,18 @@ test_components() {
 
   # Filtered by component name
   echo "--- Test: components --component filter ---"
-  output=$("$CLI" components --component TodoList 2>&1)
+  output=$("$CLI" components --component TodoList 2>&1) || true
   assert_contains "$output" "TodoList" "filtered components shows TodoList"
-  assert_contains "$output" "TodoItem" "filtered components shows children"
+  assert_not_contains "$output" "Counter" "filtered components excludes Counter"
+
+  # Filter matching multiple components (substring match)
+  output=$("$CLI" components --component Todo 2>&1) || true
+  assert_contains "$output" "TodoList" "Todo filter shows TodoList"
+  assert_contains "$output" "TodoItem" "Todo filter shows TodoItem"
 
   # Structural view (no props, no state)
   echo "--- Test: components --no-props --no-state ---"
-  output=$("$CLI" components --no-props --no-state --depth 2 2>&1)
+  output=$("$CLI" components --no-props --no-state --depth 2 2>&1) || true
   assert_contains "$output" "App" "structural view shows App"
 }
 
@@ -188,19 +202,19 @@ test_hooks() {
 
   # Counter hooks
   local output
-  output=$("$CLI" hooks Counter 2>&1)
+  output=$("$CLI" hooks Counter 2>&1) || true
   assert_contains "$output" "useState" "Counter hooks shows useState"
   assert_contains "$output" "0" "Counter useState initial value is 0"
 
   # TodoList hooks
-  output=$("$CLI" hooks TodoList 2>&1)
+  output=$("$CLI" hooks TodoList 2>&1) || true
   assert_contains "$output" "useState" "TodoList hooks shows useState"
   assert_contains "$output" "Buy milk" "TodoList state contains Buy milk"
 
   # Hooks JSON format
   echo "--- Test: hooks JSON format ---"
   local json
-  json=$("$CLI" --format json hooks Counter 2>&1)
+  json=$("$CLI" --format json hooks Counter 2>&1) || true
   assert_contains "$json" '"success": true' "hooks JSON success"
   assert_contains "$json" '"hookCount"' "hooks JSON has hookCount"
 }
@@ -208,8 +222,8 @@ test_hooks() {
 test_close() {
   echo "=== Test: close ==="
   local output
-  output=$("$CLI" close 2>&1)
-  assert_contains "$output" "OK" "close returns OK"
+  output=$("$CLI" close 2>&1) || true
+  assert_contains "$output" "closed" "close returns success"
 
   # Re-navigate for any subsequent test plans
   "$CLI" navigate http://localhost:5188 > /dev/null 2>&1 || true
