@@ -36,14 +36,15 @@ Build a Rust CLI + Node.js daemon for debugging React applications, forking agen
 
 **Milestone Goal:** Make debug-browser installable and distributable — proper skill packaging, Nix flake for reproducible builds, and public repo at sobelio/debug-browser.
 
-#### Phase 8: Skill Packaging
+#### Phase 8: Skill Packaging ✅
 **Goal**: Clean up skill to standard Claude Code skill format, ensure it works when installed standalone with proper daemon/binary discovery
 **Depends on**: v1.0 complete
 **Research**: Unlikely (existing skill patterns)
-**Plans**: TBD
+**Plans**: 2
 
 Plans:
 - [x] 08-01: Daemon discovery & install script (completed 2026-03-15)
+- [x] 08-02: Documentation & standalone verification (completed 2026-03-15)
 
 #### Phase 9: Nix Flake
 **Goal**: Create flake.nix that builds Rust CLI + daemon with Playwright, installable via `nix profile install` or as a flake input
@@ -75,6 +76,6 @@ Plans:
 | 5. Claude Code Skill | v1.0 | 2/2 | Complete | 2026-03-15 |
 | 6. Automated Testing | v1.0 | 3/3 | Complete | 2026-03-15 |
 | 7. Context Saving & AI Token Efficiency | v1.0 | 3/3 | Complete | 2026-03-15 |
-| 8. Skill Packaging | v1.1 | 1/? | In progress | - |
+| 8. Skill Packaging | v1.1 | 2/2 | Complete | 2026-03-15 |
 | 9. Nix Flake | v1.1 | 0/? | Not started | - |
 | 10. Repo & Release | v1.1 | 0/? | Not started | - |
