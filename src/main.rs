@@ -222,7 +222,14 @@ enum ConsoleAction {
 /// Build the JSON command value from CLI args.
 fn build_command(command: &Commands) -> serde_json::Value {
     match command {
-        Commands::Navigate { url } => commands::navigate(url),
+        Commands::Navigate { url } => {
+            let resolved = if url.starts_with('/') {
+                format!("http://localhost:3000{}", url)
+            } else {
+                url.clone()
+            };
+            commands::navigate(&resolved)
+        }
         Commands::Click { selector } => commands::click(selector),
         Commands::Type { selector, text } => commands::type_text(selector, text),
         Commands::Components {
