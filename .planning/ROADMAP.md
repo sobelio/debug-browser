@@ -46,7 +46,7 @@ Plans:
 
 Plans:
 - [x] 02-01: Fork agent-browser daemon (daemon.ts, browser.ts, actions.ts, protocol.ts, types.ts), strip unneeded commands, set up package.json
-- [ ] 02-02: Convert Rust CLI to thin synchronous client (connection.rs, commands.rs), remove tokio, wire to daemon
+- [x] 02-02: Convert Rust CLI to thin synchronous client (connection.rs, commands.rs), remove tokio, wire to daemon
 - [ ] 02-03: End-to-end smoke test (navigate, evaluate, console), add --connect flag for existing Chrome
 
 ### Phase 3: React DevTools Hook
@@ -91,7 +91,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. Project Scaffolding | 2/2 | Complete | 2026-03-15 |
-| 2. Daemon + CLI Architecture | 1/3 | In progress | - |
+| 2. Daemon + CLI Architecture | 2/3 | In progress | - |
 | 3. React DevTools Hook | 0/3 | Not started | - |
 | 4. Hook State Inspection | 0/2 | Not started | - |
 | 5. Claude Code Skill | 0/2 | Not started | - |

@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 2 of 5 (Daemon + CLI Architecture)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-03-15 — Completed 02-01-PLAN.md
+Last activity: 2026-03-15 — Completed 02-02-PLAN.md
 
-Progress: █████░░░░░ 25%
+Progress: ██████░░░░ 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 6.7min
-- Total execution time: 20min
+- Total plans completed: 4
+- Average duration: 7.5min
+- Total execution time: 23min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 2/2 | 5min | 2.5min |
-| 2 | 1/3 | 15min | 15min |
+| 2 | 2/3 | 18min | 9min |
 
 **Recent Trend:**
-- Last 5 plans: 2min, 3min, 15min
-- Trend: ↑ (larger tasks now)
+- Last 5 plans: 2min, 3min, 15min, 3min
+- Trend: Variable (daemon fork was largest)
 
 ## Accumulated Context
 
@@ -48,6 +48,10 @@ Progress: █████░░░░░ 25%
   - Collapses original phases 3-6 (navigation, DOM, console, script injection) — Playwright handles all of these
   - Roadmap reduced from 10 phases to 5
   - Reference: /Users/whn/tmp/agent-browser/
+- Unix-only connection (no TCP/Windows)
+- AtomicU64 counter for command IDs
+- Daemon discovery: CARGO_MANIFEST_DIR at compile time, then runtime exe path, then DEBUG_BROWSER_DAEMON_PATH env var
+- Response printing in main.rs directly (no CommandOutput conversion)
 
 ### Deferred Issues
 
@@ -60,5 +64,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Completed 02-01-PLAN.md (daemon fork)
+Stopped at: Completed 02-02-PLAN.md (Rust CLI thin client)
 Resume file: None
