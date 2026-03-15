@@ -167,6 +167,10 @@ const pressSchema = baseCommandSchema.extend({
   selector: z.string().min(1).optional(),
 });
 
+const reactDetectSchema = baseCommandSchema.extend({
+  action: z.literal('react-detect'),
+});
+
 // Union schema for all commands
 const commandSchema = z.discriminatedUnion('action', [
   launchSchema,
@@ -196,6 +200,7 @@ const commandSchema = z.discriminatedUnion('action', [
   countSchema,
   keyboardSchema,
   pressSchema,
+  reactDetectSchema,
 ]);
 
 // Parse result type

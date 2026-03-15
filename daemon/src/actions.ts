@@ -22,6 +22,7 @@ import type {
   IsVisibleCommand,
   CountCommand,
   AddInitScriptCommand,
+  ReactDetectCommand,
   NavigateData,
   ScreenshotData,
   EvaluateData,
@@ -89,6 +90,8 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         return await handleKeyboard(command, browser);
       case 'addinitscript':
         return await handleAddInitScript(command, browser);
+      case 'react-detect':
+        return await handleReactDetect(command, browser);
       default: {
         const unknownCommand = command as { id: string; action: string };
         return errorResponse(unknownCommand.id, `Unknown action: ${unknownCommand.action}`);
@@ -434,4 +437,23 @@ async function handleAddInitScript(
 ): Promise<Response> {
   await browser.addInitScript(command.script);
   return successResponse(command.id, { added: true });
+}
+
+async function handleReactDetect(
+  command: ReactDetectCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const result = await page.evaluate(() => {
+    const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+    if (!hook || !hook._debugBrowser) {
+      return { detected: false, version: null, rendererCount: 0 };
+    }
+    return {
+      detected: hook._debugBrowser.detected,
+      version: hook._debugBrowser.version,
+      rendererCount: hook._debugBrowser.rendererCount,
+    };
+  });
+  return successResponse(command.id, result);
 }

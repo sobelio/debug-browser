@@ -159,6 +159,10 @@ export interface PressCommand extends BaseCommand {
   selector?: string;
 }
 
+export interface ReactDetectCommand extends BaseCommand {
+  action: 'react-detect';
+}
+
 // Union of all command types
 export type Command =
   | LaunchCommand
@@ -187,7 +191,8 @@ export type Command =
   | IsVisibleCommand
   | CountCommand
   | KeyboardCommand
-  | PressCommand;
+  | PressCommand
+  | ReactDetectCommand;
 
 // Response types
 export interface SuccessResponse<T = unknown> {

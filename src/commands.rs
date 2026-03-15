@@ -106,6 +106,14 @@ pub fn hooks(component: &str) -> Value {
     })
 }
 
+/// Detect whether React is present on the current page.
+pub fn react_detect() -> Value {
+    json!({
+        "id": gen_id(),
+        "action": "react-detect",
+    })
+}
+
 /// Ask the daemon to close the browser and shut down.
 pub fn close() -> Value {
     json!({

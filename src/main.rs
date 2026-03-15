@@ -64,8 +64,19 @@ enum Commands {
         /// JavaScript expression to evaluate
         expression: String,
     },
+    /// React inspection commands
+    React {
+        #[command(subcommand)]
+        action: ReactAction,
+    },
     /// Close the browser and shut down the daemon
     Close,
+}
+
+#[derive(Subcommand)]
+enum ReactAction {
+    /// Detect whether React is present on the current page
+    Detect,
 }
 
 #[derive(Subcommand)]
@@ -92,6 +103,9 @@ fn build_command(command: &Commands) -> serde_json::Value {
             ConsoleAction::Clear => commands::console_clear(),
         },
         Commands::Eval { expression } => commands::evaluate(expression),
+        Commands::React { action } => match action {
+            ReactAction::Detect => commands::react_detect(),
+        },
         Commands::Close => commands::close(),
     }
 }
