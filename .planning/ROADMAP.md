@@ -80,4 +80,4 @@ Plans:
 | 7. Context Saving & AI Token Efficiency | v1.0 | 3/3 | Complete | 2026-03-15 |
 | 8. Skill Packaging | v1.1 | 2/2 | Complete | 2026-03-15 |
 | 9. Nix Flake | v1.1 | 2/2 | Complete | 2026-03-15 |
-| 10. Repo & Release | v1.1 | 0/2 | Not started | - |
+| 10. Repo & Release | 1/2 | In Progress|  | - |
