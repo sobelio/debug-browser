@@ -13,3 +13,7 @@ A Rust CLI + Claude Code skill for debugging React applications via headless bro
 - **React-first** — Component tree inspection and hook state are the core value
 - **Dual-mode** — Works as standalone CLI and as a Claude Code skill
 - **Stateful inbox** — Console logs, errors, alerts accumulate and can be queried/cleared via commands
+
+## Claude Code Skill
+
+The `skill/` directory contains a Claude Code skill for React debugging. See [skill/README.md](skill/README.md) for installation instructions.
