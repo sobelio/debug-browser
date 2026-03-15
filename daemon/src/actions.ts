@@ -26,6 +26,7 @@ import type {
   AddInitScriptCommand,
   ReactDetectCommand,
   ComponentsCommand,
+  HooksCommand,
   NavigateData,
   ScreenshotData,
   EvaluateData,
@@ -36,6 +37,12 @@ import { successResponse, errorResponse } from './protocol.js';
 /** Cached fiber tree walker script content, loaded once at module init. */
 const COMPONENT_TREE_SCRIPT = readFileSync(
   fileURLToPath(new URL('./scripts/get-component-tree.js', import.meta.url)),
+  'utf-8'
+);
+
+/** Cached hook extraction script content, loaded once at module init. */
+const HOOKS_SCRIPT = readFileSync(
+  fileURLToPath(new URL('./scripts/get-hooks.js', import.meta.url)),
   'utf-8'
 );
 
@@ -103,6 +110,8 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         return await handleReactDetect(command, browser);
       case 'components':
         return await handleComponents(command, browser);
+      case 'hooks':
+        return await handleHooks(command, browser);
       default: {
         const unknownCommand = command as { id: string; action: string };
         return errorResponse(unknownCommand.id, `Unknown action: ${unknownCommand.action}`);
@@ -486,6 +495,24 @@ async function handleComponents(
   // The script is an IIFE-style function expression; we call it with options
   const result = await page.evaluate(
     `(${COMPONENT_TREE_SCRIPT})(${JSON.stringify(options)})`
+  );
+
+  return successResponse(command.id, result);
+}
+
+async function handleHooks(
+  command: HooksCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+
+  const options = {
+    component: command.component,
+    depth: command.depth ?? 3,
+  };
+
+  const result = await page.evaluate(
+    `(${HOOKS_SCRIPT})(${JSON.stringify(options)})`
   );
 
   return successResponse(command.id, result);

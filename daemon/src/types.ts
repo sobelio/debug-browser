@@ -172,6 +172,12 @@ export interface ComponentsCommand extends BaseCommand {
   propsDepth?: number;
 }
 
+export interface HooksCommand extends BaseCommand {
+  action: 'hooks';
+  component: string;
+  depth?: number;
+}
+
 // Union of all command types
 export type Command =
   | LaunchCommand
@@ -202,7 +208,8 @@ export type Command =
   | KeyboardCommand
   | PressCommand
   | ReactDetectCommand
-  | ComponentsCommand;
+  | ComponentsCommand
+  | HooksCommand;
 
 // Response types
 export interface SuccessResponse<T = unknown> {

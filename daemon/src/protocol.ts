@@ -180,6 +180,12 @@ const componentsSchema = baseCommandSchema.extend({
   propsDepth: z.number().positive().optional(),
 });
 
+const hooksSchema = baseCommandSchema.extend({
+  action: z.literal('hooks'),
+  component: z.string().min(1),
+  depth: z.number().positive().optional(),
+});
+
 // Union schema for all commands
 const commandSchema = z.discriminatedUnion('action', [
   launchSchema,
@@ -211,6 +217,7 @@ const commandSchema = z.discriminatedUnion('action', [
   pressSchema,
   reactDetectSchema,
   componentsSchema,
+  hooksSchema,
 ]);
 
 // Parse result type
