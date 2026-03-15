@@ -89,12 +89,19 @@ pub fn console_clear() -> Value {
     })
 }
 
-/// List the React component tree (stub — requires React DevTools integration).
-pub fn components() -> Value {
-    json!({
+/// List the React component tree.
+pub fn components(depth: Option<u32>, include_host: bool) -> Value {
+    let mut cmd = json!({
         "id": gen_id(),
         "action": "components",
-    })
+    });
+    if let Some(d) = depth {
+        cmd["depth"] = json!(d);
+    }
+    if include_host {
+        cmd["includeHost"] = json!(true);
+    }
+    cmd
 }
 
 /// Inspect hooks for a named React component (stub).

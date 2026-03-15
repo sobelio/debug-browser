@@ -48,7 +48,14 @@ enum Commands {
         text: String,
     },
     /// List React component tree
-    Components,
+    Components {
+        /// Maximum depth to traverse (default: 100)
+        #[arg(long)]
+        depth: Option<u32>,
+        /// Include host elements (div, span, etc.) in output
+        #[arg(long)]
+        include_host: bool,
+    },
     /// Inspect hooks for a React component
     Hooks {
         /// Component name or selector
@@ -95,7 +102,7 @@ fn build_command(command: &Commands) -> serde_json::Value {
         Commands::Navigate { url } => commands::navigate(url),
         Commands::Click { selector } => commands::click(selector),
         Commands::Type { selector, text } => commands::type_text(selector, text),
-        Commands::Components => commands::components(),
+        Commands::Components { depth, include_host } => commands::components(*depth, *include_host),
         Commands::Hooks { component } => commands::hooks(component),
         Commands::Console { action } => match action {
             ConsoleAction::Logs => commands::console_logs(),
@@ -140,6 +147,77 @@ fn print_response(resp: &Response, format: &OutputFormat) {
                 eprintln!("Unknown error");
             }
         }
+    }
+}
+
+/// Format a component tree node recursively with indentation.
+fn format_tree_node(node: &serde_json::Value, indent: usize, output: &mut String) {
+    let name = node.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+    let comp_type = node.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+    let key = node.get("key").and_then(|v| v.as_str());
+
+    let prefix = "  ".repeat(indent);
+    output.push_str(&prefix);
+    output.push_str(name);
+    output.push_str(" (");
+    output.push_str(comp_type);
+    output.push(')');
+    if let Some(k) = key {
+        output.push_str(" key=\"");
+        output.push_str(k);
+        output.push('"');
+    }
+    output.push('\n');
+
+    if let Some(children) = node.get("children").and_then(|v| v.as_array()) {
+        for child in children {
+            format_tree_node(child, indent + 1, output);
+        }
+    }
+}
+
+/// Print a component tree response in human-readable format.
+fn print_component_tree(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        // Check for error field (non-React pages)
+        if let Some(err) = data.get("error").and_then(|v| v.as_str()) {
+            let count = data
+                .get("componentCount")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            if count == 0 {
+                println!("{}", err);
+                return;
+            }
+        }
+
+        let roots = data.get("roots").and_then(|v| v.as_array());
+        let count = data
+            .get("componentCount")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+
+        if let Some(roots) = roots {
+            if roots.is_empty() {
+                println!("No React components found.");
+                return;
+            }
+
+            let mut output = String::new();
+            for root in roots {
+                format_tree_node(root, 0, &mut output);
+            }
+            // Remove trailing newline
+            if output.ends_with('\n') {
+                output.pop();
+            }
+            println!("{}", output);
+            println!("---\n{} component(s)", count);
+        } else {
+            println!("No React components found.");
+        }
+    } else {
+        println!("No data returned.");
     }
 }
 
@@ -228,7 +306,14 @@ fn main() -> Result<()> {
     match send_command(cmd, &cli.session) {
         Ok(resp) => {
             let success = resp.success;
-            print_response(&resp, &cli.format);
+            match &cli.command {
+                Commands::Components { .. } if resp.success && cli.format == OutputFormat::Text => {
+                    print_component_tree(&resp);
+                }
+                _ => {
+                    print_response(&resp, &cli.format);
+                }
+            }
             if !success {
                 std::process::exit(1);
             }

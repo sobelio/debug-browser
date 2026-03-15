@@ -7,7 +7,7 @@ use serde::Serialize;
 use crate::error::DebugBrowserError;
 
 /// Output format for command results.
-#[derive(Debug, Clone, clap::ValueEnum)]
+#[derive(Debug, Clone, PartialEq, clap::ValueEnum)]
 pub enum OutputFormat {
     Text,
     Json,
