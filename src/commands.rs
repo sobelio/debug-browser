@@ -135,6 +135,17 @@ pub fn hooks(component: &str, depth: Option<u32>, compact: bool) -> Value {
     cmd
 }
 
+/// Set a React hook's state value by component name and hook index.
+pub fn set_state(component: &str, hook_index: u32, value: Value) -> Value {
+    json!({
+        "id": gen_id(),
+        "action": "set-state",
+        "component": component,
+        "hookIndex": hook_index,
+        "value": value,
+    })
+}
+
 /// Detect whether React is present on the current page.
 pub fn react_detect() -> Value {
     json!({

@@ -190,6 +190,13 @@ const hooksSchema = baseCommandSchema.extend({
   compact: z.boolean().optional(),
 });
 
+const setStateSchema = baseCommandSchema.extend({
+  action: z.literal('set-state'),
+  component: z.string().min(1),
+  hookIndex: z.number().int().nonnegative(),
+  value: z.unknown(),
+});
+
 const cookiesGetSchema = baseCommandSchema.extend({
   action: z.literal('cookies_get'),
   urls: z.array(z.string()).optional(),
@@ -275,6 +282,7 @@ const commandSchema = z.discriminatedUnion('action', [
   reactDetectSchema,
   componentsSchema,
   hooksSchema,
+  setStateSchema,
   cookiesGetSchema,
   cookiesSetSchema,
   cookiesClearSchema,

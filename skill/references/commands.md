@@ -8,6 +8,7 @@
 | `react detect` | Check if React is present on the page | |
 | `components` | List React component tree | `--depth`, `--component`, `--no-props`, `--no-state`, `--compact` |
 | `hooks <component>` | Inspect hooks for a named component | `--depth`, `--compact` |
+| `set-state <component> <index> <value>` | Set a useState/useReducer hook's value | |
 | `console logs` | Show collected console.log messages | |
 | `console errors` | Show collected errors and exceptions | |
 | `console clear` | Clear the console inbox | |
@@ -214,6 +215,63 @@ debug-browser hooks Counter --compact
 - For class components, returns `classState` instead of hooks array.
 - Each hook has a stable index (`[0]`, `[1]`, etc.) for tracking values across repeated inspections.
 - If multiple components match the name, the first match is inspected.
+
+---
+
+## set-state
+
+**Syntax:**
+
+```
+debug-browser set-state <component> <hook-index> <value>
+```
+
+**Purpose:** Set the value of a `useState` or `useReducer` hook, triggering a React re-render. Enables testing edge cases and reproducing bugs by forcing specific state values without UI interaction.
+
+**Arguments:**
+
+| Argument | Type | Required | Description |
+|----------|------|----------|-------------|
+| `component` | `string` | yes | Component name (same substring match as `hooks`). |
+| `hook-index` | `u32` | yes | Hook index (0-based, as shown in `hooks` output). |
+| `value` | `string` | yes | New value as JSON. Non-JSON strings are treated as string values. |
+
+**Output:**
+
+- **text:** Confirmation with component name and hook index. Example:
+  ```
+  State updated: Counter hook [0]
+  ```
+- **json:** `{ "success": true, "data": { "component": "Counter", "hookIndex": 0, "success": true, "method": "overrideHookState" } }`
+
+**Example:**
+
+```bash
+# Set a number
+debug-browser set-state Counter 0 42
+
+# Set an array
+debug-browser set-state TodoList 1 '["item1","item2"]'
+
+# Set an object
+debug-browser set-state Settings 0 '{"theme":"dark"}'
+
+# Set a string (quoted JSON)
+debug-browser set-state Greeting 0 '"hello"'
+
+# Set a boolean
+debug-browser set-state Toggle 0 false
+
+# Set null
+debug-browser set-state Form 0 null
+```
+
+**Notes:**
+- Only `useState` and `useReducer` hooks can be set. Other hook types (useEffect, useRef, useMemo, etc.) return an error.
+- The value argument is parsed as JSON. If JSON parsing fails, it is treated as a plain string.
+- The state update triggers a normal React re-render — effects, derived state, and child components update accordingly.
+- Uses React DevTools' `overrideHookState` API when available, with a fallback to the hook's dispatch function.
+- Use `hooks <component>` first to identify the correct hook index.
 
 ---
 

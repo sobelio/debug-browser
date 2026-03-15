@@ -3,9 +3,9 @@ name: debug-browser
 description: >
   Debug React applications via headless browser with rich introspection.
   Trigger when the user asks to: debug React app, inspect React components,
-  check component state, view hook values, capture console errors,
-  debug React rendering, inspect fiber tree, examine React props,
-  trace React re-renders, or diagnose React application issues.
+  check component state, view hook values, set React state, modify hook state,
+  capture console errors, debug React rendering, inspect fiber tree,
+  examine React props, trace React re-renders, or diagnose React application issues.
 ---
 
 # debug-browser
@@ -123,6 +123,36 @@ debug-browser hooks DataGrid --depth 5
 
 The default serialization depth is 3. Increase it when inspecting components with deeply nested state objects or context values.
 
+### Set Hook State
+
+Directly modify a component's `useState` or `useReducer` value without interacting with the UI. This enables rapid hypothesis testing — inspect the current state, form a theory about a bug, and immediately test it by forcing a specific state value.
+
+```bash
+debug-browser set-state Counter 0 42
+debug-browser set-state TodoList 1 '["item1","item2"]'
+debug-browser set-state Settings 0 '{"theme":"dark","lang":"en"}'
+```
+
+The first argument is the component name (same substring match as `hooks`), the second is the hook index (as shown in `hooks` output), and the third is the new value as JSON.
+
+Use `hooks` first to identify the hook index, then `set-state` to modify it:
+
+```bash
+# 1. Inspect current state
+debug-browser hooks Counter
+#   [0] useState: 5
+#   [1] useEffect: deps=[5] cleanup=no
+
+# 2. Set state to a boundary value
+debug-browser set-state Counter 0 -1
+
+# 3. Re-inspect to confirm and check for errors
+debug-browser hooks Counter
+debug-browser console errors
+```
+
+Only `useState` and `useReducer` hooks can be set. Attempting to set an effect, ref, or memo hook returns an error. The state update triggers a normal React re-render, so all derived state, effects, and child components update as expected.
+
 ### Check Console Output
 
 Console messages accumulate in an inbox between commands. Retrieve them at any time:
@@ -230,7 +260,7 @@ For reliable results, follow this sequence when diagnosing an issue:
 3. `console clear` to reset the inbox
 4. `components --component <Name>` to find the relevant component
 5. `hooks <Name>` to inspect its state
-6. Perform the interaction (`click` / `type`) that triggers the bug
+6. Perform the interaction (`click` / `type`) that triggers the bug — or use `set-state` to force a specific state value for hypothesis testing
 7. Re-inspect `hooks` and `console errors` to observe what changed
 
 ## Command Reference

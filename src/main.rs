@@ -90,6 +90,16 @@ enum Commands {
         #[arg(long)]
         compact: bool,
     },
+    /// Set a React hook's state value
+    SetState {
+        /// Component name (substring match)
+        component: String,
+        /// Hook index (0-based, as shown by `hooks` command)
+        #[arg(name = "hook-index")]
+        hook_index: u32,
+        /// New value (JSON)
+        value: String,
+    },
     /// Manage console logs/errors inbox
     Console {
         #[command(subcommand)]
@@ -242,6 +252,11 @@ fn build_command(command: &Commands) -> serde_json::Value {
             ..
         } => commands::components(*depth, *include_host, !no_props, !no_state, *props_depth, *compact),
         Commands::Hooks { component, depth, compact } => commands::hooks(component, *depth, *compact),
+        Commands::SetState { component, hook_index, value } => {
+            let parsed: serde_json::Value = serde_json::from_str(value)
+                .unwrap_or_else(|_| serde_json::Value::String(value.clone()));
+            commands::set_state(component, *hook_index, parsed)
+        }
         Commands::Console { action } => match action {
             ConsoleAction::Logs => commands::console_logs(),
             ConsoleAction::Errors => commands::console_errors(),
@@ -643,6 +658,22 @@ fn print_hooks(resp: &Response) {
                 println!("{}", line);
             }
         }
+    } else {
+        println!("No data returned.");
+    }
+}
+
+/// Print set-state response in human-readable format.
+fn print_set_state(resp: &Response) {
+    if let Some(ref data) = resp.data {
+        if let Some(err) = data.get("error").and_then(|v| v.as_str()) {
+            eprintln!("Error: {}", err);
+            return;
+        }
+
+        let component = data.get("component").and_then(|v| v.as_str()).unwrap_or("?");
+        let hook_index = data.get("hookIndex").and_then(|v| v.as_u64()).unwrap_or(0);
+        println!("State updated: {} hook [{}]", component, hook_index);
     } else {
         println!("No data returned.");
     }
@@ -1167,6 +1198,7 @@ fn main() -> Result<()> {
                         StateAction::Save { .. } => print_action_confirmation(&resp),
                         StateAction::Load => print_response(&resp, &cli.format),
                     },
+                    Commands::SetState { .. } => print_set_state(&resp),
                     Commands::Click { .. } | Commands::Type { .. } => print_action_confirmation(&resp),
                     Commands::Close => print_action_confirmation(&resp),
                 }

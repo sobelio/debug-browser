@@ -182,6 +182,13 @@ export interface HooksCommand extends BaseCommand {
   compact?: boolean;
 }
 
+export interface SetStateCommand extends BaseCommand {
+  action: 'set-state';
+  component: string;
+  hookIndex: number;
+  value: unknown;
+}
+
 export interface CookiesGetCommand extends BaseCommand {
   action: 'cookies_get';
   urls?: string[];
@@ -265,6 +272,7 @@ export type Command =
   | ReactDetectCommand
   | ComponentsCommand
   | HooksCommand
+  | SetStateCommand
   | CookiesGetCommand
   | CookiesSetCommand
   | CookiesClearCommand
