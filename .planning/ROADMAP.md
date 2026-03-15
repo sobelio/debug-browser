@@ -61,11 +61,11 @@ Plans:
 **Goal**: Create sobelio/debug-browser public repo, clean README with install/usage instructions, push code, tag v1.1 release
 **Depends on**: Phase 9
 **Research**: Unlikely (standard git/gh operations)
-**Plans**: 2
+**Plans**: 2 plans
 
 Plans:
-- [ ] 10-01: README, LICENSE, repo prep
-- [ ] 10-02: GitHub repo creation + v1.1 release tag
+- [ ] 10-01-PLAN.md — README, LICENSE, version bump, gitignore cleanup
+- [ ] 10-02-PLAN.md — GitHub repo creation + v1.1 release tag
 
 ## Progress
 
@@ -80,4 +80,4 @@ Plans:
 | 7. Context Saving & AI Token Efficiency | v1.0 | 3/3 | Complete | 2026-03-15 |
 | 8. Skill Packaging | v1.1 | 2/2 | Complete | 2026-03-15 |
 | 9. Nix Flake | v1.1 | 2/2 | Complete | 2026-03-15 |
-| 10. Repo & Release | v1.1 | 0/? | Not started | - |
+| 10. Repo & Release | v1.1 | 0/2 | Not started | - |
